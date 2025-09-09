@@ -788,53 +788,92 @@
     </div>
   </footer>
 
-  <script>
-    // 모바일 메뉴 토글
-    const burger = document.getElementById('burger');
-    const panel = document.getElementById('mobile-menu');
-    burger?.addEventListener('click', () => {
-      const open = panel.classList.toggle('open');
-      burger.setAttribute('aria-expanded', String(open));
-    });
 
-    // 단순 스무스 스크롤
-    document.querySelectorAll('a[href^="#"]').forEach(a => {
-      a.addEventListener('click', e => {
-        const href = a.getAttribute('href');
-        if (!href || href.length < 2) return;
-        const target = document.querySelector(href);
-        if (target) {
-          e.preventDefault();
-          panel?.classList.remove('open');
-          burger?.setAttribute('aria-expanded', 'false');
-          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+   <script>
+  // Service Worker 등록
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js')
+      .then(() => console.log('Service Worker registered'))
+      .catch(err => console.error('Service Worker registration failed:', err));
+  }
+
+  // 알림 권한 요청
+  Notification.requestPermission().then(permission => {
+    if (permission !== 'granted') {
+      alert('알림 권한이 필요합니다.');
+    }
+  });
+
+  // 모바일 메뉴 토글
+  const burger = document.getElementById('burger');
+  const panel = document.getElementById('mobile-menu');
+  burger?.addEventListener('click', () => {
+    const open = panel.classList.toggle('open');
+    burger.setAttribute('aria-expanded', String(open));
+  });
+
+  // 단순 스무스 스크롤
+  document.querySelectorAll('a[href^="#"]').forEach(a => {
+    a.addEventListener('click', e => {
+      const href = a.getAttribute('href');
+      if (!href || href.length < 2) return;
+      const target = document.querySelector(href);
+      if (target) {
+        e.preventDefault();
+        panel?.classList.remove('open');
+        burger?.setAttribute('aria-expanded', 'false');
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  });
+
+  // 알림 예약 함수
+  function scheduleNotification(title, options, delayMs) {
+    setTimeout(() => {
+      navigator.serviceWorker.getRegistration().then(reg => {
+        if (reg) {
+          reg.showNotification(title, options);
         }
       });
-    });
+    }, delayMs);
+  }
 
-    // 폼 검증 (프런트)
-    const form = document.getElementById('inquiry-form');
-    const errName = document.getElementById('err-name');
-    const errEmail = document.getElementById('err-email');
-    const ok = document.getElementById('form-success');
+  // 폼 검증 및 알림 예약
+  const form = document.getElementById('inquiry-form');
+  const errName = document.getElementById('err-name');
+  const errEmail = document.getElementById('err-email');
+  const ok = document.getElementById('form-success');
+  const notifyInput = document.getElementById('notify-time'); // datetime-local input
 
-    form?.addEventListener('submit', e => {
-      e.preventDefault();
-      let valid = true;
-      const name = form.name.value.trim();
-      const email = form.email.value.trim();
+  form?.addEventListener('submit', e => {
+    e.preventDefault();
+    let valid = true;
+    const name = form.name.value.trim();
+    const email = form.email.value.trim();
 
-      if (!name) { errName.hidden = false; valid = false; } else { errName.hidden = true; }
-      if (!/^\S+@\S+\.\S+$/.test(email)) { errEmail.hidden = false; valid = false; } else { errEmail.hidden = true; }
+    if (!name) { errName.hidden = false; valid = false; } else { errName.hidden = true; }
+    if (!/^\S+@\S+\.\S+$/.test(email)) { errEmail.hidden = false; valid = false; } else { errEmail.hidden = true; }
 
-      if (!valid) return;
+    if (!valid) return;
 
-      // 실제 환경에서는 fetch로 전송하세요.
-      setTimeout(() => {
-        ok.hidden = false;
-        form.reset();
-      }, 400);
-    });
-  </script>
+    // 알림 예약
+    const notifyTime = new Date(notifyInput.value);
+    const now = new Date();
+    const delay = notifyTime - now;
+
+    if (delay > 0) {
+      scheduleNotification('문의 접수 완료', {
+        body: '문의하신 내용에 대해 곧 연락드리겠습니다.',
+        icon: '/icon.png' // 알림 아이콘 경로
+      }, delay);
+    }
+
+    setTimeout(() => {
+      ok.hidden = false;
+      form.reset();
+    }, 400);
+  });
+</script>
+
 </body>
 </html>
