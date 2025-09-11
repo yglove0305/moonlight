@@ -1,0 +1,724 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>웹 메트로놈</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #0e0f13;
+      --panel: #151823;
+      --text: #e8ecf1;
+      --muted: #a6afc0;
+      --brand: #5ad1ff;
+      --accent: #ffd166;
+      --danger: #ff5e6b;
+      --ok: #34d399;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+      background: radial-gradient(1200px 800px at 70% -20%, #1b2130, var(--bg));
+      color: var(--text);
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+    .app {
+      width: min(900px, 100%);
+      background: linear-gradient(180deg, #1a1f2b 0%, var(--panel) 100%);
+      border: 1px solid #2a3243;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow:
+        0 20px 60px rgba(0,0,0,0.45),
+        inset 0 0 0 1px rgba(255,255,255,0.03);
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 4px 16px;
+      border-bottom: 1px dashed #2a3243;
+      margin-bottom: 16px;
+    }
+    .title {
+      font-weight: 800;
+      letter-spacing: 0.3px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 20px;
+    }
+    .dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--brand);
+      box-shadow: 0 0 12px var(--brand);
+      animation: pulse 2s infinite ease-in-out;
+    }
+    @keyframes pulse {
+      0%,100% { transform: scale(0.9); opacity: 0.8; }
+      50% { transform: scale(1.2); opacity: 1; }
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 16px;
+    }
+    @media (max-width: 820px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+    .card {
+      background: #121620;
+      border: 1px solid #243049;
+      border-radius: 14px;
+      padding: 16px;
+    }
+    .section-title {
+      font-size: 14px;
+      color: var(--muted);
+      margin-bottom: 10px;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+    }
+    .tempo-row {
+      display: grid;
+      grid-template-columns: 56px 1fr 56px;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+    button, input, select {
+      font: inherit;
+      color: inherit;
+    }
+    .btn {
+      background: #0f1320;
+      border: 1px solid #2a3243;
+      border-radius: 12px;
+      padding: 10px 12px;
+      cursor: pointer;
+      transition: transform 0.02s ease, background 0.2s ease, border-color 0.2s ease;
+      user-select: none;
+    }
+    .btn:hover { border-color: #3b4a69; }
+    .btn:active { transform: translateY(1px) scale(0.99); }
+    .btn.primary {
+      background: linear-gradient(180deg, #16314a, #11283e);
+      border-color: #3b5773;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), 0 4px 16px rgba(36, 96, 146, 0.3);
+    }
+    .btn.positive { background: linear-gradient(180deg, #0f3a2d, #0d2f25); border-color: #1d6a56; }
+    .btn.warning  { background: linear-gradient(180deg, #4a1f2a, #3a1721); border-color: #7a3a4a; }
+    .inline {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .num {
+      text-align: center;
+      background: #0b0f18;
+      border: 1px solid #222a3b;
+      padding: 12px;
+      border-radius: 12px;
+      font-weight: 700;
+      letter-spacing: 0.6px;
+    }
+    .slider {
+      appearance: none;
+      height: 10px;
+      background: #0d1422;
+      border: 1px solid #243049;
+      border-radius: 999px;
+      outline: none;
+    }
+    .slider::-webkit-slider-thumb {
+      appearance: none;
+      width: 20px; height: 20px; border-radius: 50%;
+      background: var(--brand);
+      border: 2px solid #102133;
+      box-shadow: 0 0 0 6px rgba(90,209,255,0.15);
+      cursor: pointer;
+    }
+    .io {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 10px;
+    }
+    @media (max-width: 480px) { .io { grid-template-columns: 1fr; } }
+    label {
+      font-size: 13px;
+      color: var(--muted);
+      display: block;
+      margin-bottom: 6px;
+    }
+    select, input[type="number"], input[type="text"] {
+      width: 100%;
+      background: #0c111b;
+      border: 1px solid #26314a;
+      border-radius: 10px;
+      padding: 10px;
+    }
+    .big {
+      font-size: clamp(32px, 6vw, 56px);
+      font-weight: 900;
+      letter-spacing: 1px;
+      text-align: center;
+      margin: 4px 0 12px;
+    }
+    .visual {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+    .pendulum-wrap {
+      position: relative;
+      height: 180px;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      border: 1px solid #2a3243;
+      border-radius: 12px;
+      background: radial-gradient(500px 300px at 50% -60%, #1a2337, #0c111b);
+    }
+    .pivot {
+      position: absolute;
+      top: 18px; left: 50%;
+      width: 10px; height: 10px; margin-left: -5px;
+      border-radius: 50%;
+      background: #c7d2fe;
+      box-shadow: 0 0 18px rgba(199,210,254,0.6);
+    }
+    .rod {
+      width: 4px; height: 120px;
+      background: linear-gradient(180deg, #e0e7ff, #b6c0f9);
+      transform-origin: top center;
+      border-radius: 2px;
+      box-shadow: 0 10px 24px rgba(90,209,255,0.15);
+    }
+    .weight {
+      width: 24px; height: 24px; border-radius: 50%;
+      background: var(--brand);
+      box-shadow: 0 0 18px rgba(90,209,255,0.6);
+      transform: translateY(126px);
+      margin-left: -10px;
+      border: 2px solid #102133;
+    }
+    .beats {
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      gap: 8px;
+    }
+    .beat {
+      height: 28px;
+      border-radius: 999px;
+      background: #0d1422;
+      border: 1px solid #2a3243;
+      position: relative;
+      overflow: hidden;
+    }
+    .beat.active {
+      border-color: var(--accent);
+      box-shadow: inset 0 0 0 1px rgba(255, 209, 102, 0.3);
+    }
+    .beat .fill {
+      position: absolute; left: 0; top: 0; bottom: 0; width: 0%;
+      background: linear-gradient(90deg, var(--accent), #ffc84d);
+      transition: width 0.05s linear;
+    }
+    .status {
+      font-size: 12px; color: var(--muted);
+      text-align: center; margin-top: 6px;
+    }
+    .kbd {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      background: #0c111b;
+      border: 1px solid #243049;
+      padding: 2px 6px;
+      border-radius: 6px;
+      color: #cbd5e1;
+    }
+    .footer {
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 12px;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .spacer { height: 10px; }
+  </style>
+</head>
+<body>
+  <div class="app" role="application" aria-label="웹 메트로놈">
+    <header>
+      <div class="title"><span class="dot" aria-hidden="true"></span> 웹 메트로놈</div>
+      <div class="inline" aria-hidden="true">
+        <span class="kbd">Space</span> 시작/정지
+        <span class="kbd">↑↓</span> BPM
+        <span class="kbd">T</span> 탭
+      </div>
+    </header>
+
+    <div class="grid">
+      <!-- Controls -->
+      <section class="card" aria-labelledby="tempo-title">
+        <div class="section-title" id="tempo-title">Tempo & timing</div>
+
+        <div class="tempo-row" aria-label="템포 조절">
+          <button class="btn" id="decrease" aria-label="BPM 감소">–</button>
+          <input class="slider" id="bpm" type="range" min="20" max="300" step="1" value="100" aria-valuemin="20" aria-valuemax="300" aria-valuenow="100" />
+          <button class="btn" id="increase" aria-label="BPM 증가">＋</button>
+        </div>
+        <div class="big"><span id="bpmLabel">100</span> BPM</div>
+
+        <div class="io">
+          <div>
+            <label for="beatsPerBar">박자표(윗수: 한 마디 박 수)</label>
+            <input id="beatsPerBar" type="number" min="1" max="12" value="4" />
+          </div>
+          <div>
+            <label for="noteValue">박자표(아랫수: 음표 길이)</label>
+            <select id="noteValue">
+              <option value="4" selected>4 (4분음표)</option>
+              <option value="8">8 (8분음표)</option>
+              <option value="2">2 (2분음표)</option>
+              <option value="1">1 (온음표)</option>
+              <option value="16">16 (16분음표)</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="subdivision">세분화(서브디비전)</label>
+            <select id="subdivision">
+              <option value="1" selected>없음</option>
+              <option value="2">2 (이분 분할)</option>
+              <option value="3">3 (삼분 분할)</option>
+              <option value="4">4 (16분 느낌)</option>
+            </select>
+          </div>
+          <div>
+            <label for="accentPattern">액센트 패턴(쉼표는 0, 액센트는 X)</label>
+            <input id="accentPattern" type="text" value="X000" aria-describedby="accentHelp" />
+            <div id="accentHelp" class="status">예: X000 (4/4), X0X0 (2+2), X00000 (6/8 느낌)</div>
+          </div>
+
+          <div>
+            <label for="soundSelect">소리(클릭 종류)</label>
+            <select id="soundSelect">
+              <option value="sine" selected>사인(맑음)</option>
+              <option value="square">스퀘어(선명)</option>
+              <option value="triangle">트라이앵글(부드러움)</option>
+              <option value="noise">노이즈(우드블록 느낌)</option>
+              <option value="clave">클라베(합성)</option>
+            </select>
+          </div>
+          <div>
+            <label for="volume">볼륨</label>
+            <input id="volume" type="range" min="0" max="1" step="0.01" value="0.8" />
+          </div>
+
+          <div>
+            <label for="swing">스윙(0=없음, 0.6=재즈)</label>
+            <input id="swing" type="range" min="0" max="0.75" step="0.01" value="0" />
+          </div>
+          <div>
+            <label for="humanize">휴머나이즈(ms, 0=없음)</label>
+            <input id="humanize" type="range" min="0" max="25" step="1" value="0" />
+          </div>
+        </div>
+
+        <div class="spacer"></div>
+
+        <div class="inline">
+          <button class="btn primary" id="startStop" aria-pressed="false">시작</button>
+          <button class="btn" id="tapBtn" title="T 키도 가능">탭 템포</button>
+          <button class="btn positive" id="presetSlow">느림(60)</button>
+          <button class="btn positive" id="presetMed">중간(100)</button>
+          <button class="btn positive" id="presetFast">빠름(140)</button>
+          <button class="btn warning" id="reset">초기화</button>
+        </div>
+
+        <div class="status" id="status">대기 중</div>
+      </section>
+
+      <!-- Visuals -->
+      <section class="card" aria-labelledby="visual-title">
+        <div class="section-title" id="visual-title">Visual</div>
+        <div class="visual">
+          <div class="pendulum-wrap" aria-hidden="true">
+            <div class="pivot"></div>
+            <div class="rod" id="rod" style="transform: rotate(-20deg);">
+              <div class="weight"></div>
+            </div>
+          </div>
+          <div class="beats" id="beats" aria-label="비주얼 비트 표시"></div>
+        </div>
+        <div class="status">진동 지원 기기에서 클릭 시 약한 햅틱 제공</div>
+      </section>
+    </div>
+
+    <div class="footer">
+      <div>Tip: 스페이스 시작/정지, ↑/↓ BPM, T 탭</div>
+      <div>정확한 스케줄링(오디오 타임라인) + 시각적 보정</div>
+    </div>
+  </div>
+
+  <script>
+    // ===== 기본 상태 =====
+    const $ = (sel) => document.querySelector(sel);
+    const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+
+    const el = {
+      bpm: $('#bpm'),
+      bpmLabel: $('#bpmLabel'),
+      dec: $('#decrease'),
+      inc: $('#increase'),
+      startStop: $('#startStop'),
+      tapBtn: $('#tapBtn'),
+      presetSlow: $('#presetSlow'),
+      presetMed: $('#presetMed'),
+      presetFast: $('#presetFast'),
+      reset: $('#reset'),
+      beatsPerBar: $('#beatsPerBar'),
+      noteValue: $('#noteValue'),
+      subdivision: $('#subdivision'),
+      accentPattern: $('#accentPattern'),
+      soundSelect: $('#soundSelect'),
+      volume: $('#volume'),
+      swing: $('#swing'),
+      humanize: $('#humanize'),
+      status: $('#status'),
+      beats: $('#beats'),
+      rod: $('#rod'),
+    };
+
+    let audioCtx = null;
+    let masterGain = null;
+
+    // 정확한 이벤트 스케줄링을 위한 변수들
+    let isRunning = false;
+    let currentBeat = 0;          // 마디 내 기준 비트 인덱스
+    let nextNoteTime = 0;         // 오디오 타임라인 (seconds)
+    const lookahead = 25;         // ms: 검사 주기
+    const scheduleAheadTime = 0.1; // seconds: 앞으로 스케줄할 범위
+    let timerID = null;
+
+    // 탭 템포
+    const taps = [];
+    const TAP_EXPIRY_MS = 2000;
+
+    // 비주얼 박자 표시 초기화
+    function renderBeats() {
+      const bpb = clamp(parseInt(el.beatsPerBar.value || '4', 10), 1, 12);
+      el.beats.innerHTML = '';
+      for (let i = 0; i < Math.min(bpb, 8); i++) {
+        const d = document.createElement('div');
+        d.className = 'beat';
+        d.innerHTML = '<div class="fill"></div>';
+        el.beats.appendChild(d);
+      }
+    }
+    renderBeats();
+
+    // ===== 유틸 =====
+    function clamp(v, min, max) { return Math.min(max, Math.max(min, v)); }
+    function nowMs() { return performance.now(); }
+    function supportsVibrate() { return 'vibrate' in navigator; }
+
+    function setStatus(text) { el.status.textContent = text; }
+    function setBpmLabel(val) {
+      el.bpmLabel.textContent = String(val);
+      el.bpm.setAttribute('aria-valuenow', String(val));
+    }
+
+    // 액센트 문자열 -> 배열 (X = 액센트, 0 = 일반, . 또는 - = 쉼)
+    function parseAccent(pattern, bpb) {
+      let p = (pattern || '').trim().toUpperCase();
+      if (!p) {
+        // 기본: 첫 박만 액센트
+        return Array.from({ length: bpb }, (_, i) => (i === 0 ? 'X' : '0'));
+      }
+      // 길이를 맞추거나 자르기
+      const cleaned = p.replace(/[^X0\.\-]/g, '').replace(/[\.\-]/g, '.');
+      const arr = cleaned.split('').slice(0, bpb);
+      while (arr.length < bpb) arr.push('0');
+      return arr;
+    }
+
+    // ===== 오디오 엔진 =====
+    function initAudio() {
+      if (audioCtx) return;
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      masterGain = audioCtx.createGain();
+      masterGain.gain.value = parseFloat(el.volume.value);
+      masterGain.connect(audioCtx.destination);
+    }
+
+    function makeClick(time, isAccent, soundType, duration = 0.03) {
+      const vol = isAccent ? 1.0 : 0.7;
+
+      if (soundType === 'noise' || soundType === 'clave') {
+        // 노이즈 기반 클릭
+        const bufferSize = audioCtx.sampleRate * 0.05;
+        const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize); // 감쇠
+        }
+        const noise = audioCtx.createBufferSource();
+        noise.buffer = buffer;
+
+        let filter = audioCtx.createBiquadFilter();
+        if (soundType === 'clave') {
+          filter.type = 'bandpass';
+          filter.frequency.value = isAccent ? 2200 : 1700;
+          filter.Q.value = 6;
+        } else {
+          filter.type = 'highpass';
+          filter.frequency.value = isAccent ? 1800 : 1400;
+          filter.Q.value = 0.7;
+        }
+
+        const g = audioCtx.createGain();
+        g.gain.setValueAtTime(0, time);
+        g.gain.linearRampToValueAtTime(vol, time + 0.002);
+        g.gain.exponentialRampToValueAtTime(0.0001, time + 0.05);
+
+        noise.connect(filter).connect(g).connect(masterGain);
+        noise.start(time);
+        noise.stop(time + 0.06);
+        return;
+      }
+
+      const osc = audioCtx.createOscillator();
+      osc.type = soundType; // 'sine' | 'square' | 'triangle'
+      const g = audioCtx.createGain();
+
+      const fStart = isAccent ? 1760 : 1320;  // A6 / E6 근처
+      const fEnd = isAccent ? 1320 : 880;
+
+      osc.frequency.setValueAtTime(fStart, time);
+      osc.frequency.exponentialRampToValueAtTime(fEnd, time + duration);
+
+      g.gain.setValueAtTime(0, time);
+      g.gain.linearRampToValueAtTime(vol, time + 0.002);
+      g.gain.exponentialRampToValueAtTime(0.0001, time + Math.max(0.035, duration));
+
+      osc.connect(g).connect(masterGain);
+      osc.start(time);
+      osc.stop(time + 0.08);
+    }
+
+    function scheduleNote(beatIndex, time) {
+      const bpb = clamp(parseInt(el.beatsPerBar.value || '4', 10), 1, 12);
+      const pattern = parseAccent(el.accentPattern.value, bpb);
+      const isAccent = pattern[beatIndex % bpb] === 'X';
+
+      makeClick(time, isAccent, el.soundSelect.value);
+
+      // 진동(가볍게)
+      if (supportsVibrate()) navigator.vibrate(isAccent ? 15 : 8);
+
+      // 비주얼 트리거 예약
+      requestAnimationFrame(() => {
+        flashBeat(beatIndex % Math.min(bpb, 8));
+        swingRod(beatIndex, bpb, time);
+      });
+    }
+
+    function nextNote() {
+      const bpm = parseInt(el.bpm.value, 10);
+      const noteValue = parseInt(el.noteValue.value, 10);
+      const subdivision = parseInt(el.subdivision.value, 10);
+      const humanizeMs = parseInt(el.humanize.value, 10);
+
+      // 기준 박 길이(분모 보정)
+      const secondsPerBeat = 60.0 / bpm * (4 / noteValue);
+
+      // 서브디비전: 1이면 원래 박, 2면 그 절반 등
+      let step = secondsPerBeat / subdivision;
+
+      // 스윙 적용: subdivision이 2 또는 4일 때 홀짝 길이 변경
+      const swing = parseFloat(el.swing.value);
+      if (swing > 0 && (subdivision === 2 || subdivision === 4)) {
+        const isOdd = currentBeat % 2 === 0; // 0부터 시작: 첫 클릭을 길게
+        const swingFactor = 0.5 + (isOdd ? swing : -swing) * 0.5; // 0~1 사이
+        step = secondsPerBeat * swingFactor;
+      }
+
+      // 휴머나이즈(±humanizeMs/2)
+      if (humanizeMs > 0) {
+        const jitter = (Math.random() - 0.5) * (humanizeMs / 1000);
+        nextNoteTime += Math.max(0.0005, step + jitter);
+      } else {
+        nextNoteTime += Math.max(0.0005, step);
+      }
+      currentBeat++;
+    }
+
+    function scheduler() {
+      while (audioCtx && nextNoteTime < audioCtx.currentTime + scheduleAheadTime) {
+        scheduleNote(currentBeat, nextNoteTime);
+        nextNote();
+      }
+      timerID = setTimeout(scheduler, lookahead);
+    }
+
+    // 비주얼: 비트 플래시/프로그레스
+    function flashBeat(idx) {
+      const nodes = $$('.beat');
+      if (!nodes.length) return;
+      nodes.forEach(n => n.classList.remove('active'));
+      const node = nodes[idx];
+      if (!node) return;
+      node.classList.add('active');
+
+      // 간단 진행 바(한 스텝 동안)
+      const bpm = parseInt(el.bpm.value, 10);
+      const noteValue = parseInt(el.noteValue.value, 10);
+      const subdivision = parseInt(el.subdivision.value, 10);
+      const stepDur = (60 / bpm) * (4 / noteValue) / subdivision * 1000;
+      const fill = node.querySelector('.fill');
+      fill.style.transition = 'none';
+      fill.style.width = '0%';
+      requestAnimationFrame(() => {
+        fill.style.transition = `width ${Math.max(10, stepDur - 10)}ms linear`;
+        fill.style.width = '100%';
+      });
+    }
+
+    // 비주얼: 펜듈럼 스윙
+    function swingRod(beatIndex, bpb, audioTime) {
+      // 왼(-20) ↔ 오른(+20) 번갈아
+      const angle = beatIndex % 2 === 0 ? -20 : 20;
+      el.rod.style.transition = 'transform 80ms ease-out';
+      // 오디오 타임과 화면 타이밍 차이를 완화
+      const drift = (audioCtx.currentTime - audioTime) * 1000; // ms
+      const compensate = Math.max(0, 20 - drift);
+      setTimeout(() => {
+        el.rod.style.transform = `rotate(${angle}deg)`;
+      }, compensate);
+    }
+
+    // ===== 컨트롤 바인딩 =====
+    function start() {
+      initAudio();
+      if (isRunning) return;
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+
+      isRunning = true;
+      currentBeat = 0;
+      nextNoteTime = audioCtx.currentTime + 0.05; // 약간의 준비시간
+      scheduler();
+      el.startStop.textContent = '정지';
+      el.startStop.setAttribute('aria-pressed', 'true');
+      setStatus('재생 중');
+    }
+
+    function stop() {
+      if (!isRunning) return;
+      isRunning = false;
+      clearTimeout(timerID);
+      el.startStop.textContent = '시작';
+      el.startStop.setAttribute('aria-pressed', 'false');
+      setStatus('정지됨');
+    }
+
+    function toggle() { isRunning ? stop() : start(); }
+
+    // BPM 변경
+    function setBpm(v) {
+      const nv = clamp(parseInt(v, 10) || 100, 20, 300);
+      el.bpm.value = nv;
+      setBpmLabel(nv);
+      setStatus(`BPM: ${nv}`);
+    }
+
+    el.bpm.addEventListener('input', e => setBpm(e.target.value));
+    el.dec.addEventListener('click', () => setBpm(parseInt(el.bpm.value, 10) - 1));
+    el.inc.addEventListener('click', () => setBpm(parseInt(el.bpm.value, 10) + 1));
+
+    el.startStop.addEventListener('click', toggle);
+
+    // 볼륨
+    el.volume.addEventListener('input', () => {
+      if (!audioCtx) return;
+      masterGain.gain.setTargetAtTime(parseFloat(el.volume.value), audioCtx.currentTime, 0.01);
+    });
+
+    // UI 변경 시 상태 업데이트 및 비주얼 리렌더
+    ['beatsPerBar', 'accentPattern'].forEach(id => {
+      el[id].addEventListener('input', renderBeats);
+    });
+
+    // 프리셋
+    el.presetSlow.addEventListener('click', () => setBpm(60));
+    el.presetMed.addEventListener('click', () => setBpm(100));
+    el.presetFast.addEventListener('click', () => setBpm(140));
+
+    el.reset.addEventListener('click', () => {
+      stop();
+      setBpm(100);
+      el.beatsPerBar.value = 4;
+      el.noteValue.value = 4;
+      el.subdivision.value = 1;
+      el.accentPattern.value = 'X000';
+      el.soundSelect.value = 'sine';
+      el.volume.value = 0.8;
+      el.swing.value = 0;
+      el.humanize.value = 0;
+      renderBeats();
+      setStatus('초기화됨');
+    });
+
+    // 탭 템포
+    function registerTap() {
+      const t = nowMs();
+      // 오래된 탭 제거
+      while (taps.length && t - taps[0] > TAP_EXPIRY_MS) taps.shift();
+      taps.push(t);
+      if (taps.length >= 2) {
+        // 평균 간격
+        const intervals = [];
+        for (let i = 1; i < taps.length; i++) intervals.push(taps[i] - taps[i-1]);
+        const avg = intervals.reduce((a,b) => a + b, 0) / intervals.length;
+        const bpm = clamp(Math.round(60000 / avg), 20, 300);
+        setBpm(bpm);
+      }
+      // 작은 피드백
+      if (supportsVibrate()) navigator.vibrate(6);
+      flashBeat(0);
+    }
+
+    el.tapBtn.addEventListener('click', registerTap);
+
+    // 키보드 단축키
+    document.addEventListener('keydown', (e) => {
+      if (e.repeat) return;
+      if (e.code === 'Space') { e.preventDefault(); toggle(); }
+      else if (e.code === 'ArrowUp') { setBpm(parseInt(el.bpm.value, 10) + 1); }
+      else if (e.code === 'ArrowDown') { setBpm(parseInt(el.bpm.value, 10) - 1); }
+      else if (e.key.toLowerCase() === 't') { registerTap(); }
+    });
+
+    // iOS 등 사용자 제스처 후 오디오 해제
+    ['click','touchend'].forEach(evt => {
+      document.addEventListener(evt, () => {
+        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+      }, { passive: true });
+    });
+
+    // 처음 로드 시 상태 표시
+    setBpmLabel(el.bpm.value);
+    setStatus('대기 중');
+  </script>
+</body>
+</html>
