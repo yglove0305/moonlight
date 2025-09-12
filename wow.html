@@ -14,7 +14,7 @@
         Notification.requestPermission().then(permission => {
           if (permission === 'granted') {
             // 사람이 읽기 쉬운 형식 → 날짜 객체로 변환
-            const dateString = "2025.09.12-pm4:12";
+            const dateString = "2025.09.12-pm4:18";
             const [datePart, timePart] = dateString.split('-');
             const [year, month, day] = datePart.split('.').map(Number);
 
