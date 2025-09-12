@@ -1,7 +1,8 @@
-self.addEventListener('notificationclick', event => {
-  event.notification.close();
-  // 클릭 시 특정 페이지로 이동하거나 다른 동작 가능
-  event.waitUntil(
-    clients.openWindow('/')
-  );
+self.addEventListener('message', event => {
+  if (event.data === 'showNotification') {
+    self.registration.showNotification('⏰ 알림', {
+      body: '지정된 시간입니다: 2025년 9월 12일 16시 10분!',
+      icon: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/Alarm_Clock.svg/1200px-Alarm_Clock.svg.png'
+    });
+  }
 });
