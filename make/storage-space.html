@@ -1,481 +1,531 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="utf-8" />
-  <title>IndexedDB 60fps 영상 저장/삭제 데모</title>
+  <meta charset="UTF-8" />
+  <title>IndexedDB 파일 저장/삭제 데모</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root {
-      color-scheme: light dark;
-      --bg: #0b0c10;
-      --fg: #eaeaea;
-      --muted: #9aa0a6;
-      --accent: #5c9dff;
-      --card: #16181d;
-      --border: #2a2f36;
-      --danger: #ff6b6b;
-      --warn: #f4b400;
-      --ok: #34a853;
+      --bg: #0f1220;
+      --panel: #171a2b;
+      --text: #e7eaf6;
+      --muted: #aab3d0;
+      --primary: #7aa2ff;
+      --accent: #5eead4;
+      --danger: #ff6b7a;
+      --warn: #ffcc66;
+      --border: #273052;
     }
+    * { box-sizing: border-box; }
     body {
-      margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      background: var(--bg); color: var(--fg);
+      margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI,
+      Roboto, Noto Sans, Apple SD Gothic Neo, Malgun Gothic, sans-serif;
+      background: linear-gradient(180deg, #0d1020, #0b1024);
+      color: var(--text);
     }
-    header, footer {
-      padding: 16px 20px; border-bottom: 1px solid var(--border);
+    header {
+      padding: 24px 16px; border-bottom: 1px solid var(--border);
+      background: rgba(23,26,43,0.6); backdrop-filter: blur(6px);
+      position: sticky; top: 0; z-index: 10;
     }
-    header h1 { margin: 0 0 8px; font-size: 20px; }
-    header p { margin: 0; color: var(--muted); font-size: 13px; }
-    main { padding: 16px 20px; display: grid; gap: 16px; }
-    .row { display: grid; gap: 12px; grid-template-columns: 1fr; }
-    @media (min-width: 900px) {
-      .row { grid-template-columns: 1.1fr 1fr; align-items: start; }
-    }
+    h1 { margin: 0 0 6px; font-size: 20px; }
+    p.desc { margin: 0; color: var(--muted); font-size: 13px; }
+    main { max-width: 980px; margin: 24px auto; padding: 0 16px 48px; }
+
     .panel {
-      border: 1px solid var(--border);
-      background: var(--card);
-      border-radius: 12px;
-      padding: 14px;
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: 12px; padding: 16px; margin-bottom: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
     }
-    .panel h2 { margin: 0 0 10px; font-size: 16px; }
-    .ctrls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-    button, label.btn {
-      background: #1f232b; color: var(--fg);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 10px 12px;
-      cursor: pointer; font-weight: 600; font-size: 14px;
+    .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+    .grow { flex: 1 1 240px; }
+    input[type="file"] {
+      background: #0d1124; color: var(--text); border: 1px dashed var(--border);
+      padding: 10px; border-radius: 8px; width: 100%;
     }
-    button:hover, label.btn:hover { border-color: var(--accent); }
-    button.primary { background: var(--accent); color: #0b0c10; border-color: transparent; }
-    button.danger { background: var(--danger); color: #0b0c10; border-color: transparent; }
-    button.warn { background: var(--warn); color: #0b0c10; border-color: transparent; }
-    .muted { color: var(--muted); font-size: 13px; }
-    video { width: 100%; max-height: 400px; border-radius: 12px; background: #000; }
-    input[type="text"] {
-      background: #0f1216; border: 1px solid var(--border); color: var(--fg);
-      border-radius: 10px; padding: 10px 12px; min-width: 220px;
+    input[type="text"], select {
+      background: #0d1124; color: var(--text); border: 1px solid var(--border);
+      padding: 10px 12px; border-radius: 8px; width: 100%;
     }
-    input[type="file"] { display: none; }
-    .grid {
-      display: grid; gap: 10px;
-      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    button {
+      background: #182449; color: var(--text); border: 1px solid var(--border);
+      padding: 10px 14px; border-radius: 10px; cursor: pointer;
+      transition: transform 0.05s ease, background 0.2s ease, border 0.2s ease;
     }
-    .card {
-      border: 1px solid var(--border); background: #101318; border-radius: 12px; padding: 12px;
-      display: grid; gap: 10px;
+    button:hover { background: #1d2b5b; }
+    button:active { transform: translateY(1px); }
+    button.primary { background: #1c2d68; border-color: #2b3f8f; color: #e9f0ff; }
+    button.primary:hover { background: #21407f; }
+    button.accent { background: #134e4a; border-color: #186862; color: #e7fffb; }
+    button.accent:hover { background: #11635c; }
+    button.danger { background: #5a1e2a; border-color: #8a2e3f; color: #ffeef1; }
+    button.danger:hover { background: #712433; }
+    button.ghost { background: transparent; border-color: var(--border); }
+
+    .toolbar { display: flex; gap: 10px; flex-wrap: wrap; }
+    .badge {
+      display: inline-block; padding: 4px 8px; border: 1px solid var(--border);
+      border-radius: 999px; color: var(--muted); font-size: 12px;
+      background: #0d1124;
     }
-    .card video { max-height: 180px; }
-    .meta { font-size: 13px; color: var(--muted); display: grid; gap: 4px; }
-    .meta strong { color: var(--fg); }
-    .space {
-      display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted);
+
+    table {
+      width: 100%; border-collapse: collapse; overflow: hidden;
+      border-radius: 12px; border: 1px solid var(--border);
+      background: #0d1124;
     }
-    progress {
-      width: 160px; height: 12px;
-      accent-color: var(--accent);
-      background: #0f1216; border: 1px solid var(--border); border-radius: 6px;
+    thead th {
+      text-align: left; font-weight: 600; color: var(--muted);
+      border-bottom: 1px solid var(--border); padding: 10px;
+      background: #0f1530;
     }
-    .row-tight { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-    .hint { font-size: 12px; color: var(--muted); }
-    .badge { font-size: 12px; padding: 2px 6px; border-radius: 999px; background: #1f232b; border: 1px solid var(--border); }
-    .right { margin-left: auto; }
+    tbody td {
+      border-bottom: 1px solid var(--border); padding: 10px; vertical-align: middle;
+    }
+    tbody tr:hover { background: rgba(122,162,255,0.05); }
+    .right { text-align: right; }
+    .muted { color: var(--muted); }
+    .empty {
+      text-align: center; padding: 28px; color: var(--muted);
+      border: 1px dashed var(--border); border-radius: 12px; background: #0b0f22;
+    }
+    footer { color: var(--muted); font-size: 12px; text-align: center; margin-top: 24px; }
   </style>
 </head>
 <body>
   <header>
-    <h1>IndexedDB 60fps 영상 저장/삭제 데모</h1>
-    <p>60fps로 녹화 → IndexedDB 저장 → 목록/재생/다운로드/개별삭제/전체삭제. 파일 가져오기 저장도 지원.</p>
+    <h1>IndexedDB 파일 저장소</h1>
+    <p class="desc">파일을 브라우저 로컬에 안전하게 저장하고, 목록/다운로드/삭제/전체 삭제까지 한 번에.</p>
   </header>
 
   <main>
-    <section class="row">
-      <div class="panel">
-        <h2>카메라 미리보기 및 녹화</h2>
-        <div class="ctrls">
-          <button id="btnStart" class="primary">녹화 시작 (60fps 시도)</button>
-          <button id="btnStop" disabled>녹화 중지</button>
-          <span class="badge" id="recState">대기</span>
-          <span class="right hint">미리보기는 카메라 실시간 스트림입니다</span>
-        </div>
-        <div style="margin:10px 0;">
-          <video id="preview" autoplay playsinline muted></video>
-        </div>
-
-        <div class="row-tight">
-          <input type="text" id="titleInput" placeholder="영상 제목 (선택)" />
-          <span class="hint">녹화 종료 시 제목으로 저장됩니다</span>
-        </div>
-
-        <div class="row-tight" style="margin-top:8px;">
-          <span class="hint">MIME:</span>
-          <span class="badge" id="mimeBadge">감지 중…</span>
-          <span class="hint">청크 주기:</span>
-          <span class="badge" id="timesliceBadge">200ms</span>
-        </div>
-      </div>
-
-      <div class="panel">
-        <h2>저장 공간 및 파일 가져오기</h2>
-        <div class="space" style="margin-bottom:8px;">
-          <span>저장 용량</span>
-          <progress id="quotaBar" value="0" max="1"></progress>
-          <span id="quotaText" class="muted">-</span>
-          <button id="btnRefreshQuota">새로고침</button>
-        </div>
-
-        <div class="ctrls" style="margin-top:8px;">
-          <label class="btn">
-            파일 가져와 저장
-            <input id="filePicker" type="file" accept="video/*" />
-          </label>
-          <button id="btnClearAll" class="danger">전체 삭제</button>
-        </div>
-        <p class="hint" style="margin-top:8px;">
-          큰 파일은 저장에 시간이 걸릴 수 있어요. 저장 후 아래 목록에 나타납니다.
-        </p>
-      </div>
-    </section>
-
+    <!-- 업로드 패널 -->
     <section class="panel">
-      <h2>저장된 영상 목록</h2>
-      <div id="list" class="grid"></div>
-      <p id="emptyState" class="muted" style="display:none; margin-top:8px;">아직 저장된 영상이 없습니다.</p>
+      <div class="row">
+        <div class="grow">
+          <input id="fileInput" type="file" multiple />
+        </div>
+        <button id="btnSave" class="primary">선택 파일 저장</button>
+        <button id="btnClear" class="danger">전체 삭제</button>
+        <span class="badge" id="quotaInfo">-</span>
+      </div>
     </section>
+
+    <!-- 필터/정렬 패널 -->
+    <section class="panel">
+      <div class="toolbar">
+        <div class="grow">
+          <input id="searchInput" type="text" placeholder="이름으로 검색..." />
+        </div>
+        <select id="sortSelect" class="grow">
+          <option value="createdAt_desc">최신 순</option>
+          <option value="createdAt_asc">오래된 순</option>
+          <option value="size_desc">크기 큰 순</option>
+          <option value="size_asc">크기 작은 순</option>
+          <option value="name_asc">이름 A→Z</option>
+          <option value="name_desc">이름 Z→A</option>
+        </select>
+        <button id="btnRefresh" class="ghost">새로고침</button>
+      </div>
+    </section>
+
+    <!-- 목록 패널 -->
+    <section class="panel">
+      <div class="row" style="justify-content: space-between; margin-bottom: 8px;">
+        <div class="muted">저장된 항목: <span id="count">0</span>개</div>
+        <div class="muted">선택: <span id="selectedCount">0</span>개</div>
+      </div>
+
+      <div id="tableWrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 36px;"><input id="checkAll" type="checkbox" /></th>
+              <th>이름</th>
+              <th>타입</th>
+              <th class="right">크기</th>
+              <th>저장 시각</th>
+              <th class="right">동작</th>
+            </tr>
+          </thead>
+          <tbody id="tbody">
+            <!-- 항목 렌더링 -->
+          </tbody>
+        </table>
+        <div id="empty" class="empty" style="display:none;">저장된 파일이 없습니다.</div>
+      </div>
+
+      <div class="row" style="margin-top: 12px; justify-content: space-between;">
+        <div class="toolbar">
+          <button id="btnDeleteSelected" class="danger">선택 삭제</button>
+          <button id="btnExportMeta" class="accent">메타데이터 내보내기(JSON)</button>
+          <button id="btnImportMeta" class="ghost">메타데이터 가져오기(JSON)</button>
+          <input id="importMetaInput" type="file" accept="application/json" style="display:none;" />
+        </div>
+        <div class="toolbar">
+          <button id="btnRecount" class="ghost">용량/갯수 재계산</button>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      IndexedDB 데모 — 로컬에서만 동작합니다. 브라우저/시크릿 모드 정책에 따라 저장 한도가 다를 수 있어요.
+    </footer>
   </main>
 
-  <footer>
-    <span class="hint">참고: 실제 60fps 달성 여부는 장치/브라우저/조명/부하에 따라 달라집니다.</span>
-  </footer>
-
   <script>
-    // ====== 유틸 ======
+    // -------- 설정 상수 --------
+    const DB_NAME = 'fileVaultDB';
+    const DB_VERSION = 1;
+    const STORE_NAME = 'files';
+    // 레코드 스키마: { id: auto, name, type, size, createdAt, blob }
+
+    // -------- 유틸 --------
     const $ = (sel) => document.querySelector(sel);
-    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-    const nowISO = () => new Date().toISOString();
+    const formatBytes = (bytes) => {
+      if (bytes === 0) return '0 B';
+      const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(1024));
+      return (bytes / Math.pow(1024, i)).toFixed(i ? 2 : 0) + ' ' + units[i];
+    };
+    const formatDate = (ms) => {
+      const d = new Date(ms);
+      const y = d.getFullYear();
+      const m = String(d.getMonth()+1).padStart(2,'0');
+      const day = String(d.getDate()).padStart(2,'0');
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mm = String(d.getMinutes()).padStart(2, '0');
+      const ss = String(d.getSeconds()).padStart(2, '0');
+      return `${y}-${m}-${day} ${hh}:${mm}:${ss}`;
+    };
 
-    function fmtBytes(bytes) {
-      if (!bytes && bytes !== 0) return "-";
-      const units = ["B","KB","MB","GB","TB"];
-      let i = 0, v = bytes;
-      while (v >= 1024 && i < units.length - 1) { v /= 1024; i++; }
-      return `${v.toFixed(v < 10 && i > 0 ? 1 : 0)} ${units[i]}`;
-    }
-    function fmtSec(sec) {
-      sec = Math.max(0, Math.round(sec));
-      const h = Math.floor(sec / 3600);
-      const m = Math.floor((sec % 3600) / 60);
-      const s = sec % 60;
-      return h > 0 ? `${h}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}` : `${m}:${String(s).padStart(2,"0")}`;
-    }
-
-    // ====== IndexedDB 래퍼 ======
-    const DB_NAME = "videoDB";
-    const DB_VER  = 1;
-    const STORE   = "videos";
+    // -------- IndexedDB 핸들 --------
+    let db;
 
     function openDB() {
       return new Promise((resolve, reject) => {
-        const req = indexedDB.open(DB_NAME, DB_VER);
+        const req = indexedDB.open(DB_NAME, DB_VERSION);
         req.onupgradeneeded = (e) => {
-          const db = req.result;
-          if (!db.objectStoreNames.contains(STORE)) {
-            const os = db.createObjectStore(STORE, { keyPath: "id", autoIncrement: true });
-            os.createIndex("createdAt", "createdAt");
-            os.createIndex("title", "title", { unique: false });
+          const db = e.target.result;
+          if (!db.objectStoreNames.contains(STORE_NAME)) {
+            const store = db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+            store.createIndex('name', 'name', { unique: false });
+            store.createIndex('createdAt', 'createdAt', { unique: false });
+            store.createIndex('size', 'size', { unique: false });
           }
         };
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error);
+        req.onsuccess = (e) => { db = e.target.result; resolve(db); };
+        req.onerror = (e) => reject(e.target.error);
       });
     }
 
-    async function addVideo(record) {
-      const db = await openDB();
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction(STORE, "readwrite");
-        tx.oncomplete = () => resolve(record);
-        tx.onerror = () => reject(tx.error);
-        tx.objectStore(STORE).add(record);
-      });
+    function tx(storeName, mode = 'readonly') {
+      return db.transaction(storeName, mode).objectStore(storeName);
     }
 
-    async function getAllVideos() {
-      const db = await openDB();
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction(STORE, "readonly");
-        const req = tx.objectStore(STORE).getAll();
-        req.onsuccess = () => resolve(req.result.sort((a, b) => b.id - a.id));
-        req.onerror = () => reject(req.error);
-      });
-    }
-
-    async function deleteVideo(id) {
-      const db = await openDB();
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction(STORE, "readwrite");
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error);
-        tx.objectStore(STORE).delete(id);
-      });
-    }
-
-    async function clearAllVideos() {
-      const db = await openDB();
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction(STORE, "readwrite");
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error);
-        tx.objectStore(STORE).clear();
-      });
-    }
-
-    // ====== 저장 용량 ======
-    async function refreshQuota() {
-      if (!navigator.storage?.estimate) {
-        $("#quotaText").textContent = "지원되지 않음";
-        $("#quotaBar").value = 0;
-        return;
-      }
-      const { quota = 0, usage = 0 } = await navigator.storage.estimate();
-      $("#quotaBar").max = quota || 1;
-      $("#quotaBar").value = usage || 0;
-      $("#quotaText").textContent = `${fmtBytes(usage)} / ${fmtBytes(quota)} 사용`;
-    }
-
-    // ====== 녹화 관련 ======
-    let mediaStream = null;
-    let mediaRecorder = null;
-    let recordedChunks = [];
-    let recordStartAt = 0;
-    let chosenMime = "";
-
-    function pickSupportedMime() {
-      const candidates = [
-        'video/webm;codecs=vp9,opus',
-        'video/webm;codecs=vp8,opus',
-        'video/webm;codecs=vp09.00.10.08',
-        'video/webm',
-        'video/mp4;codecs=avc1.42E01E,mp4a.40.2', // 일부 브라우저는 MediaRecorder MP4 미지원
-      ];
-      return candidates.find(type => MediaRecorder.isTypeSupported(type)) || "";
-    }
-
-    async function startPreview() {
-      if (mediaStream) return;
-      try {
-        mediaStream = await navigator.mediaDevices.getUserMedia({
-          audio: true,
-          video: {
-            width: { ideal: 1920 },
-            height: { ideal: 1080 },
-            frameRate: { ideal: 60, max: 60 }, // 60fps 요청
-          },
-        });
-        $("#preview").srcObject = mediaStream;
-      } catch (err) {
-        alert("카메라/마이크 접근 실패: " + err.message);
-      }
-    }
-
-    function setRecState(text, color='') {
-      const el = $("#recState");
-      el.textContent = text;
-      el.style.background = color || '#1f232b';
-      el.style.color = color ? '#0b0c10' : '';
-    }
-
-    async function startRecording() {
-      await startPreview();
-      recordedChunks = [];
-      chosenMime = pickSupportedMime();
-      $("#mimeBadge").textContent = chosenMime || "지원 코덱 없음 → 기본값";
-
-      try {
-        mediaRecorder = new MediaRecorder(mediaStream, chosenMime ? { mimeType: chosenMime, videoBitsPerSecond: 8_000_000 } : { videoBitsPerSecond: 8_000_000 });
-      } catch (err) {
-        alert("MediaRecorder 초기화 실패: " + err.message);
-        return;
-      }
-
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data && e.data.size > 0) recordedChunks.push(e.data);
-      };
-      mediaRecorder.onstart = () => {
-        recordStartAt = performance.now();
-        setRecState("녹화중", "#34a853");
-        $("#btnStart").disabled = true;
-        $("#btnStop").disabled = false;
-      };
-      mediaRecorder.onstop = async () => {
-        const blob = new Blob(recordedChunks, { type: chosenMime || "video/webm" });
-        const durationSec = (performance.now() - recordStartAt) / 1000;
-        const title = ($("#titleInput").value || "녹화 영상") + "";
-
+    async function addFiles(files) {
+      if (!files || !files.length) return 0;
+      const store = tx(STORE_NAME, 'readwrite');
+      let count = 0;
+      for (const file of files) {
         const record = {
-          title,
-          createdAt: nowISO(),
-          duration: durationSec,
-          size: blob.size,
-          mime: blob.type,
-          // Blob은 IndexedDB에 직접 저장 가능
-          data: blob,
+          name: file.name,
+          type: file.type || 'application/octet-stream',
+          size: file.size,
+          createdAt: Date.now(),
+          blob: file
         };
-        await addVideo(record);
-        await renderList();
-        await refreshQuota();
-
-        setRecState("저장됨", "#5c9dff");
-        $("#btnStart").disabled = false;
-        $("#btnStop").disabled = true;
-        $("#titleInput").value = "";
-      };
-
-      const TIMESLICE = 200; // ms 단위: 청크 수집 주기
-      $("#timesliceBadge").textContent = TIMESLICE + "ms";
-      mediaRecorder.start(TIMESLICE);
-    }
-
-    async function stopRecording() {
-      if (!mediaRecorder || mediaRecorder.state !== "recording") return;
-      mediaRecorder.stop();
-    }
-
-    // ====== 파일 가져오기 → IndexedDB 저장 ======
-    async function importFile(file) {
-      if (!file) return;
-      const blob = file.slice(0, file.size, file.type || "video/webm");
-      const record = {
-        title: file.name || "가져온 영상",
-        createdAt: nowISO(),
-        duration: 0, // 알 수 없으면 0으로 두고, 재생 시 길이 추정 가능
-        size: blob.size,
-        mime: blob.type || "video/webm",
-        data: blob,
-      };
-      await addVideo(record);
-      await renderList();
-      await refreshQuota();
-    }
-
-    // ====== 목록 그리기 ======
-    async function renderList() {
-      const list = $("#list");
-      const empty = $("#emptyState");
-      list.innerHTML = "";
-      const items = await getAllVideos();
-      empty.style.display = items.length ? "none" : "block";
-
-      for (const rec of items) {
-        const url = URL.createObjectURL(rec.data);
-        const card = document.createElement("div");
-        card.className = "card";
-        card.innerHTML = `
-          <video src="${url}" controls playsinline></video>
-          <div class="meta">
-            <div><strong>${escapeHtml(rec.title || "제목 없음")}</strong></div>
-            <div>저장일: ${new Date(rec.createdAt).toLocaleString()}</div>
-            <div>길이: ${rec.duration ? fmtSec(rec.duration) : "알 수 없음"} · 크기: ${fmtBytes(rec.size)} · MIME: ${rec.mime || "-"}</div>
-            <div>ID: ${rec.id}</div>
-          </div>
-          <div class="ctrls">
-            <button data-act="play" data-id="${rec.id}">재생</button>
-            <button data-act="download" data-id="${rec.id}">다운로드</button>
-            <button class="warn" data-act="rename" data-id="${rec.id}">제목 변경</button>
-            <button class="danger" data-act="delete" data-id="${rec.id}">삭제</button>
-          </div>
-        `;
-        // 이벤트 바인딩
-        card.querySelectorAll("button").forEach(btn => {
-          btn.addEventListener("click", async (e) => {
-            const id = Number(btn.dataset.id);
-            const act = btn.dataset.act;
-            if (act === "play") {
-              const v = card.querySelector("video");
-              v.currentTime = 0;
-              await v.play().catch(()=>{});
-            } else if (act === "download") {
-              const a = document.createElement("a");
-              const filename = (rec.title || `video_${rec.id}`).replace(/[\\/:*?"<>|]/g, "_") + (mimeToExt(rec.mime));
-              a.href = url;
-              a.download = filename;
-              document.body.appendChild(a);
-              a.click();
-              a.remove();
-            } else if (act === "delete") {
-              if (!confirm("이 영상을 삭제할까요?")) return;
-              await deleteVideo(id);
-              await renderList();
-              await refreshQuota();
-            } else if (act === "rename") {
-              const newTitle = prompt("새 제목을 입력하세요", rec.title || "");
-              if (newTitle == null) return;
-              await renameVideo(id, newTitle);
-              await renderList();
-            }
-          });
-        });
-        list.appendChild(card);
-
-        // 사용 후 URL 해제 (비동기 안전 타이밍)
-        setTimeout(() => URL.revokeObjectURL(url), 60_000);
+        await reqAsPromise(store.add(record));
+        count++;
       }
+      return count;
     }
 
-    function mimeToExt(mime) {
-      if (!mime) return ".webm";
-      if (mime.includes("mp4")) return ".mp4";
-      if (mime.includes("webm")) return ".webm";
-      return ".bin";
-    }
-
-    function escapeHtml(s) {
-      return (s || "").replace(/[&<>"']/g, c => ({
-        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
-      }[c]));
-    }
-
-    async function renameVideo(id, newTitle) {
-      const db = await openDB();
+    function reqAsPromise(request) {
       return new Promise((resolve, reject) => {
-        const tx = db.transaction(STORE, "readwrite");
-        const store = tx.objectStore(STORE);
-        const getReq = store.get(id);
-        getReq.onsuccess = () => {
-          const rec = getReq.result;
-          if (!rec) { reject(new Error("Not found")); return; }
-          rec.title = newTitle;
-          store.put(rec);
-        };
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
       });
     }
 
-    // ====== 이벤트 연결 ======
-    $("#btnStart").addEventListener("click", startRecording);
-    $("#btnStop").addEventListener("click", stopRecording);
-    $("#btnClearAll").addEventListener("click", async () => {
-      if (!confirm("정말 모든 영상을 삭제할까요? 이 작업은 되돌릴 수 없습니다.")) return;
-      await clearAllVideos();
-      await renderList();
-      await refreshQuota();
-      setRecState("전체 삭제 완료");
-    });
-    $("#filePicker").addEventListener("change", async (e) => {
-      const file = e.target.files?.[0];
-      await importFile(file);
-      e.target.value = "";
-    });
-    $("#btnRefreshQuota").addEventListener("click", refreshQuota);
+    async function getAll() {
+      const store = tx(STORE_NAME, 'readonly');
+      if (store.getAll) {
+        return await reqAsPromise(store.getAll());
+      }
+      // fallback: 커서 순회
+      return new Promise((resolve, reject) => {
+        const out = [];
+        const req = store.openCursor();
+        req.onsuccess = (e) => {
+          const cursor = e.target.result;
+          if (cursor) {
+            out.push(cursor.value);
+            cursor.continue();
+          } else {
+            resolve(out);
+          }
+        };
+        req.onerror = () => reject(req.error);
+      });
+    }
 
-    // 초기화
-    (async function init() {
-      $("#mimeBadge").textContent = pickSupportedMime() || "감지 실패";
-      await startPreview().catch(()=>{});
-      await renderList();
-      await refreshQuota();
-    })();
+    async function deleteById(id) {
+      const store = tx(STORE_NAME, 'readwrite');
+      await reqAsPromise(store.delete(id));
+    }
+
+    async function clearAll() {
+      const store = tx(STORE_NAME, 'readwrite');
+      await reqAsPromise(store.clear());
+    }
+
+    async function getById(id) {
+      const store = tx(STORE_NAME, 'readonly');
+      return await reqAsPromise(store.get(id));
+    }
+
+    // -------- 렌더링 --------
+    let cache = [];
+    let selected = new Set();
+
+    function render() {
+      const tbody = $('#tbody');
+      tbody.innerHTML = '';
+      const empty = $('#empty');
+
+      const q = $('#searchInput').value.trim().toLowerCase();
+      const sort = $('#sortSelect').value;
+
+      let rows = cache.filter(r => !q || (r.name || '').toLowerCase().includes(q));
+
+      const compare = {
+        'createdAt_desc': (a,b) => b.createdAt - a.createdAt,
+        'createdAt_asc': (a,b) => a.createdAt - b.createdAt,
+        'size_desc': (a,b) => b.size - a.size,
+        'size_asc': (a,b) => a.size - b.size,
+        'name_asc': (a,b) => (a.name||'').localeCompare(b.name||''),
+        'name_desc': (a,b) => (b.name||'').localeCompare(a.name||''),
+      }[sort] || ((a,b)=>0);
+
+      rows.sort(compare);
+
+      $('#count').textContent = cache.length.toString();
+      $('#selectedCount').textContent = selected.size.toString();
+
+      if (!rows.length) {
+        empty.style.display = 'block';
+        return;
+      }
+      empty.style.display = 'none';
+
+      const frag = document.createDocumentFragment();
+      for (const r of rows) {
+        const tr = document.createElement('tr');
+
+        const tdSel = document.createElement('td');
+        const chk = document.createElement('input');
+        chk.type = 'checkbox';
+        chk.checked = selected.has(r.id);
+        chk.addEventListener('change', () => {
+          if (chk.checked) selected.add(r.id);
+          else selected.delete(r.id);
+          $('#selectedCount').textContent = selected.size.toString();
+          updateCheckAll();
+        });
+        tdSel.appendChild(chk);
+        tr.appendChild(tdSel);
+
+        const tdName = document.createElement('td');
+        tdName.textContent = r.name || '(이름 없음)';
+        tr.appendChild(tdName);
+
+        const tdType = document.createElement('td');
+        tdType.textContent = r.type || 'application/octet-stream';
+        tr.appendChild(tdType);
+
+        const tdSize = document.createElement('td');
+        tdSize.className = 'right';
+        tdSize.textContent = formatBytes(r.size || 0);
+        tr.appendChild(tdSize);
+
+        const tdDate = document.createElement('td');
+        tdDate.textContent = formatDate(r.createdAt);
+        tr.appendChild(tdDate);
+
+        const tdAct = document.createElement('td');
+        tdAct.className = 'right';
+        const btnDl = document.createElement('button');
+        btnDl.className = 'accent';
+        btnDl.textContent = '다운로드';
+        btnDl.addEventListener('click', () => downloadRecord(r.id));
+        const btnDel = document.createElement('button');
+        btnDel.className = 'danger';
+        btnDel.style.marginLeft = '8px';
+        btnDel.textContent = '삭제';
+        btnDel.addEventListener('click', async () => {
+          if (!confirm('이 항목을 삭제할까요?')) return;
+          await deleteById(r.id);
+          selected.delete(r.id);
+          await reload();
+        });
+        tdAct.appendChild(btnDl);
+        tdAct.appendChild(btnDel);
+        tr.appendChild(tdAct);
+
+        frag.appendChild(tr);
+      }
+      tbody.appendChild(frag);
+
+      updateCheckAll();
+    }
+
+    function updateCheckAll() {
+      const allIds = cache.map(r => r.id);
+      const checkedCount = allIds.filter(id => selected.has(id)).length;
+      const checkAll = $('#checkAll');
+      checkAll.indeterminate = checkedCount > 0 && checkedCount < allIds.length;
+      checkAll.checked = checkedCount > 0 && checkedCount === allIds.length;
+    }
+
+    async function reload() {
+      cache = await getAll();
+      render();
+      await recount();
+    }
+
+    // -------- 동작 --------
+    async function handleSave() {
+      const input = $('#fileInput');
+      const files = Array.from(input.files || []);
+      if (!files.length) {
+        alert('저장할 파일을 선택해 주세요.');
+        return;
+      }
+      try {
+        const saved = await addFiles(files);
+        input.value = '';
+        await reload();
+        alert(`${saved}개 파일을 저장했습니다.`);
+      } catch (err) {
+        console.error(err);
+        alert('저장 중 오류가 발생했습니다. 용량 제한 또는 브라우저 정책을 확인해 주세요.');
+      }
+    }
+
+    async function handleClearAll() {
+      if (!cache.length) {
+        alert('삭제할 항목이 없습니다.');
+        return;
+      }
+      if (!confirm('정말 전체 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')) return;
+      await clearAll();
+      selected.clear();
+      await reload();
+      alert('모든 항목을 삭제했습니다.');
+    }
+
+    async function handleDeleteSelected() {
+      if (!selected.size) {
+        alert('선택된 항목이 없습니다.');
+        return;
+      }
+      if (!confirm(`선택한 ${selected.size}개 항목을 삭제할까요?`)) return;
+      const store = tx(STORE_NAME, 'readwrite');
+      await Promise.all(Array.from(selected).map(id => reqAsPromise(store.delete(id))));
+      selected.clear();
+      await reload();
+      alert('선택 항목을 삭제했습니다.');
+    }
+
+    async function downloadRecord(id) {
+      try {
+        const rec = await getById(id);
+        if (!rec) return alert('항목을 찾을 수 없습니다.');
+        const url = URL.createObjectURL(rec.blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = rec.name || 'download';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      } catch (e) {
+        console.error(e);
+        alert('다운로드 중 오류가 발생했습니다.');
+      }
+    }
+
+    async function recount() {
+      const total = cache.reduce((sum, r) => sum + (r.size || 0), 0);
+      $('#quotaInfo').textContent = `총 ${cache.length}개 / ${formatBytes(total)}`;
+    }
+
+    // 메타데이터 내보내기(Blob 제외) — 백업용
+    function exportMeta() {
+      const meta = cache.map(({id, name, type, size, createdAt}) => ({id, name, type, size, createdAt}));
+      const blob = new Blob([JSON.stringify({ exportedAt: Date.now(), items: meta }, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'file-vault-meta.json';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    async function importMeta(file) {
+      try {
+        const text = await file.text();
+        const parsed = JSON.parse(text);
+        if (!parsed || !Array.isArray(parsed.items)) {
+          alert('올바르지 않은 메타데이터 파일입니다.');
+          return;
+        }
+        // 메타데이터는 참조용이라 DB에 쓰지 않고 콘솔에만 표시
+        console.table(parsed.items);
+        alert(`메타데이터 ${parsed.items.length}개 항목을 불러왔습니다. (데이터는 쓰지 않습니다)`);
+      } catch (e) {
+        console.error(e);
+        alert('메타데이터 가져오기 중 오류가 발생했습니다.');
+      }
+    }
+
+    // -------- 이벤트 바인딩 --------
+    window.addEventListener('DOMContentLoaded', async () => {
+      try {
+        await openDB();
+        await reload();
+      } catch (e) {
+        console.error(e);
+        alert('IndexedDB를 초기화할 수 없습니다. 브라우저 설정을 확인해 주세요.');
+      }
+
+      $('#btnSave').addEventListener('click', handleSave);
+      $('#btnClear').addEventListener('click', handleClearAll);
+      $('#btnDeleteSelected').addEventListener('click', handleDeleteSelected);
+      $('#btnRefresh').addEventListener('click', reload);
+      $('#btnRecount').addEventListener('click', recount);
+      $('#btnExportMeta').addEventListener('click', exportMeta);
+      $('#btnImportMeta').addEventListener('click', () => $('#importMetaInput').click());
+      $('#importMetaInput').addEventListener('change', (e) => {
+        const f = e.target.files?.[0];
+        if (f) importMeta(f);
+        e.target.value = '';
+      });
+
+      $('#searchInput').addEventListener('input', render);
+      $('#sortSelect').addEventListener('change', render);
+      $('#checkAll').addEventListener('change', (e) => {
+        if (e.target.checked) {
+          cache.forEach(r => selected.add(r.id));
+        } else {
+          selected.clear();
+        }
+        render();
+      });
+    });
   </script>
 </body>
 </html>
