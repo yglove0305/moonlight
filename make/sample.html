@@ -1,0 +1,681 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="반응형 샘플 페이지 데모. 시맨틱 HTML, 접근성, 컴포넌트, 폼, 테이블, 미디어 예시 포함." />
+  <meta name="keywords" content="HTML, CSS, JavaScript, 샘플 페이지, 접근성, 반응형" />
+  <meta name="author" content="Sample Author" />
+  <title>샘플 페이지 데모</title>
+
+  <!-- Open Graph 기본 -->
+  <meta property="og:title" content="샘플 페이지 데모" />
+  <meta property="og:description" content="시맨틱 HTML + 접근성 + 반응형 레이아웃 샘플" />
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="ko_KR" />
+
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌿</text></svg>">
+
+  <style>
+    :root {
+      --bg: #0b1020;
+      --bg-soft: #111832;
+      --panel: #172145;
+      --text: #e6e8ef;
+      --muted: #b7bfd4;
+      --primary: #7aa2ff;
+      --primary-alt: #5bd1d7;
+      --danger: #ff6b6b;
+      --success: #46d08c;
+      --warning: #ffb454;
+      --border: #243057;
+      --shadow: 0 8px 24px rgba(0,0,0,.35);
+      --radius: 14px;
+      --radius-sm: 10px;
+      --radius-lg: 22px;
+      --space: 16px;
+      --space-lg: 28px;
+      --space-xl: 44px;
+      --maxw: 1200px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", Arial, sans-serif;
+      --grad: linear-gradient(135deg, rgba(122,162,255,.18), rgba(91,209,215,.18));
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: var(--sans);
+      color: var(--text);
+      background:
+        radial-gradient(1200px 600px at 80% -10%, rgba(122,162,255,.18), transparent 60%),
+        radial-gradient(900px 450px at 10% 10%, rgba(91,209,215,.18), transparent 60%),
+        linear-gradient(180deg, #0a0f20 0%, #0a0f20 50%, #0b1020 100%);
+      background-attachment: fixed;
+      line-height: 1.6;
+      letter-spacing: .1px;
+    }
+
+    a { color: var(--primary); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* 레이아웃 */
+    .container {
+      max-width: var(--maxw);
+      margin: 0 auto;
+      padding: 0 var(--space);
+    }
+
+    header.site-header {
+      position: sticky; top: 0; z-index: 1000;
+      backdrop-filter: blur(8px);
+      background: rgba(11,16,32,.6);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 64px;
+      gap: var(--space);
+    }
+    .brand {
+      display: flex; align-items: center; gap: 10px;
+      font-weight: 700; letter-spacing: .3px;
+    }
+    .brand .logo {
+      width: 36px; height: 36px; border-radius: 10px;
+      display: grid; place-items: center;
+      background: var(--grad);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      font-size: 20px;
+    }
+    .nav-links {
+      display: flex; gap: 14px; align-items: center;
+      flex-wrap: wrap;
+    }
+    .nav-links a {
+      padding: 8px 12px; border-radius: 8px;
+      color: var(--text);
+    }
+    .nav-links a[aria-current="page"] {
+      background: rgba(122,162,255,.15);
+      border: 1px solid var(--border);
+    }
+    .theme-toggle {
+      display: inline-flex; gap: 8px; align-items: center;
+      padding: 8px 12px; border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--bg-soft);
+      cursor: pointer;
+    }
+
+    /* 히어로 */
+    .hero {
+      padding: clamp(40px, 8vw, 120px) 0;
+      border-bottom: 1px solid var(--border);
+      background:
+        radial-gradient(80% 140% at 100% 0%, rgba(122,162,255,.08), transparent 70%),
+        radial-gradient(60% 100% at 0% 0%, rgba(91,209,215,.08), transparent 70%);
+    }
+    .hero-grid {
+      display: grid; gap: var(--space-lg);
+      grid-template-columns: 1.2fr .8fr;
+    }
+    .hero h1 {
+      margin: 0 0 12px;
+      font-size: clamp(28px, 4vw, 42px);
+      line-height: 1.2;
+    }
+    .hero p.lead {
+      margin: 0 0 20px; color: var(--muted);
+      font-size: clamp(16px, 2vw, 18px);
+    }
+    .cta-row { display: flex; gap: 12px; flex-wrap: wrap; }
+    .btn {
+      appearance: none; border: 1px solid var(--border);
+      background: var(--bg-soft);
+      color: var(--text);
+      padding: 12px 16px; border-radius: 12px;
+      font-weight: 600; cursor: pointer;
+      transition: transform .06s ease, background .2s ease, border-color .2s ease;
+    }
+    .btn:hover { transform: translateY(-1px); }
+    .btn-primary {
+      background: linear-gradient(180deg, #88b0ff, #7aa2ff);
+      color: #0c1022; border-color: transparent;
+    }
+    .btn-ghost {
+      background: transparent;
+    }
+    .stat-card {
+      display: grid; gap: 10px; padding: 16px;
+      background: rgba(23,33,69,.6);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+    .stats {
+      display: grid; gap: 12px;
+      grid-template-columns: repeat(2, 1fr);
+    }
+    .stat .num { font-size: 22px; font-weight: 800; }
+    .stat .label { color: var(--muted); font-size: 14px; }
+
+    /* 메인 콘텐츠 */
+    main { padding: var(--space-xl) 0; }
+    .grid {
+      display: grid; gap: var(--space-lg);
+      grid-template-columns: 2fr 1fr;
+    }
+    section, aside, article {
+      background: rgba(17,24,50,.55);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: var(--space-lg);
+      box-shadow: var(--shadow);
+    }
+    h2, h3, h4 {
+      margin-top: 0;
+      letter-spacing: .2px;
+    }
+    .kicker {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px; letter-spacing: .4px;
+      background: rgba(122,162,255,.14);
+      border: 1px solid var(--border);
+      color: var(--primary);
+      margin-bottom: 8px;
+    }
+
+    /* 카드 그리드 */
+    .cards {
+      display: grid; gap: var(--space);
+      grid-template-columns: repeat(3, 1fr);
+    }
+    .card {
+      background: var(--bg-soft);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .card .thumb {
+      aspect-ratio: 16/9; background: #0e1530;
+      background-image: radial-gradient(circle at 30% 20%, rgba(122,162,255,.4), transparent 40%),
+                        radial-gradient(circle at 70% 80%, rgba(91,209,215,.35), transparent 40%);
+      border-bottom: 1px solid var(--border);
+    }
+    .card .body { padding: 14px; }
+    .tags { display: flex; gap: 8px; flex-wrap: wrap; }
+    .tag {
+      font-size: 12px; padding: 3px 8px;
+      border: 1px solid var(--border);
+      border-radius: 999px; color: var(--muted);
+      background: rgba(255,255,255,.03);
+    }
+
+    /* 표, 코드, 인용 */
+    .table-wrap { overflow-x: auto; }
+    table {
+      width: 100%; border-collapse: collapse; font-size: 14px;
+      background: var(--bg-soft); border-radius: var(--radius);
+      overflow: hidden;
+    }
+    th, td { padding: 12px 14px; border-bottom: 1px solid var(--border); }
+    th { text-align: left; color: var(--muted); font-weight: 600; }
+    tr:hover td { background: rgba(255,255,255,.02); }
+    code, pre {
+      font-family: var(--mono);
+      background: #0e1530; border: 1px solid var(--border);
+      border-radius: var(--radius-sm); color: #bfe3ff;
+    }
+    code { padding: 2px 6px; }
+    pre { padding: 14px; overflow: auto; }
+
+    blockquote {
+      margin: 0; padding: 14px 16px; border-left: 4px solid var(--primary);
+      background: rgba(122,162,255,.08);
+      border-radius: 0 var(--radius) var(--radius) 0;
+      color: #dce6ff;
+    }
+
+    /* 폼 */
+    .form-grid {
+      display: grid; gap: var(--space);
+      grid-template-columns: repeat(2, 1fr);
+    }
+    .form-item { display: grid; gap: 8px; }
+    label { color: var(--muted); font-size: 14px; }
+    input[type="text"], input[type="email"], input[type="url"], textarea, select {
+      width: 100%; padding: 12px 14px; color: var(--text);
+      background: #0e1530; border: 1px solid var(--border);
+      border-radius: 10px; outline: none;
+    }
+    input:focus, textarea:focus, select:focus {
+      border-color: var(--primary); box-shadow: 0 0 0 3px rgba(122,162,255,.2);
+    }
+    .help { color: var(--muted); font-size: 12px; }
+
+    /* 푸터 */
+    footer {
+      padding: var(--space-xl) 0; color: var(--muted);
+      border-top: 1px solid var(--border);
+      background: rgba(11,16,32,.7);
+    }
+    .footer-grid {
+      display: grid; gap: var(--space-lg);
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+    }
+    .subtle {
+      color: var(--muted); font-size: 13px;
+    }
+
+    /* 반응형 */
+    @media (max-width: 1024px) {
+      .hero-grid { grid-template-columns: 1fr; }
+      .grid { grid-template-columns: 1fr; }
+      .cards { grid-template-columns: repeat(2, 1fr); }
+      .footer-grid { grid-template-columns: 2fr 1fr 1fr; }
+    }
+    @media (max-width: 640px) {
+      .nav { height: auto; padding: 10px 0; gap: 10px; }
+      .nav-links { width: 100%; justify-content: space-between; }
+      .cards { grid-template-columns: 1fr; }
+      .stats { grid-template-columns: 1fr 1fr; }
+      .form-grid { grid-template-columns: 1fr; }
+      .footer-grid { grid-template-columns: 1fr 1fr; }
+    }
+
+    /* 애니메이션 */
+    .float { animation: float 6s ease-in-out infinite; }
+    @keyframes float {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-6px); }
+    }
+  </style>
+</head>
+<body>
+  <a href="#main" class="skip" style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;">
+    본문으로 바로가기
+  </a>
+
+  <header class="site-header" role="banner">
+    <div class="container nav" aria-label="주요 내비게이션">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">🌿</div>
+        <span>Sample UI</span>
+      </div>
+      <nav class="nav-links" aria-label="상단 메뉴">
+        <a href="#" aria-current="page">홈</a>
+        <a href="#features">기능</a>
+        <a href="#docs">문서</a>
+        <a href="#contact">문의</a>
+      </nav>
+      <button class="theme-toggle" id="themeToggle" aria-pressed="false" aria-label="테마 전환">
+        <span>테마</span> <span aria-hidden="true">🌙</span>
+      </button>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="container hero-grid">
+      <div>
+        <span class="kicker">버전 1.0 · 오픈 데모</span>
+        <h1>시맨틱하고 반응형인 웹의 기초, 여기서 시작하세요.</h1>
+        <p class="lead">
+          이 페이지는 접근성과 성능을 고려한 HTML/CSS/JS 샘플입니다.
+          컴포넌트, 폼, 테이블, 코드 블록, 반응형 그리드까지 한 번에 확인하세요.
+        </p>
+        <div class="cta-row">
+          <a class="btn btn-primary" href="#get-started">시작하기</a>
+          <a class="btn btn-ghost" href="#docs">문서 보기</a>
+        </div>
+        <div class="stats" style="margin-top: 18px;">
+          <div class="stat-card">
+            <div class="stat">
+              <div class="num">~2.5s</div>
+              <div class="label">LCP 목표</div>
+            </div>
+            <div class="stat">
+              <div class="num">100점</div>
+              <div class="label">접근성 체크</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat">
+              <div class="num">0 에러</div>
+              <div class="label">콘솔 경고</div>
+            </div>
+            <div class="stat">
+              <div class="num">A+</div>
+              <div class="label">모바일 사용성</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <aside class="float" aria-label="하이라이트">
+        <h3 style="margin-top:0;">이 샘플로 할 수 있는 것</h3>
+        <ul>
+          <li>컴포넌트 구조 학습: 헤더/히어로/그리드/카드</li>
+          <li>접근성 패턴: ARIA 라벨, 키보드 포커스</li>
+          <li>폼 예제: 유효성, 도움말, 에러 상태</li>
+          <li>테이블/코드/인용: 문서용 서식</li>
+        </ul>
+        <blockquote cite="https://www.w3.org/WAI/">
+          웹은 모든 사람을 위한 것입니다. — Tim Berners‑Lee
+        </blockquote>
+      </aside>
+    </div>
+  </section>
+
+  <main id="main" class="container" role="main">
+    <div class="grid">
+      <section id="features" aria-labelledby="features-title">
+        <span class="kicker">Features</span>
+        <h2 id="features-title">핵심 기능 미리보기</h2>
+
+        <div class="cards" style="margin-top: 10px;">
+          <article class="card">
+            <div class="thumb" role="img" aria-label="반응형 그리드를 상징하는 그래픽"></div>
+            <div class="body">
+              <h3>반응형 그리드</h3>
+              <p>CSS Grid로 모바일에서 데스크톱까지 부드럽게 레이아웃이 변합니다.</p>
+              <div class="tags">
+                <span class="tag">CSS Grid</span>
+                <span class="tag">Mobile-first</span>
+              </div>
+            </div>
+          </article>
+          <article class="card">
+            <div class="thumb" role="img" aria-label="접근성 아이콘 그래픽"></div>
+            <div class="body">
+              <h3>접근성 우선</h3>
+              <p>명확한 레이블, 키보드 포커스, 대비, ARIA로 누구나 접근 가능.</p>
+              <div class="tags">
+                <span class="tag">A11y</span>
+                <span class="tag">ARIA</span>
+              </div>
+            </div>
+          </article>
+          <article class="card">
+            <div class="thumb" role="img" aria-label="컴포넌트와 모듈성을 나타내는 그래픽"></div>
+            <div class="body">
+              <h3>컴포넌트 설계</h3>
+              <p>카드, 테이블, 폼 등 재사용 가능한 블럭으로 확장성 확보.</p>
+              <div class="tags">
+                <span class="tag">Reusable</span>
+                <span class="tag">Scalable</span>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <h3 style="margin-top: 28px;">코드 스니펫</h3>
+        <pre aria-label="코드 예시"><code>
+// 간단한 토글 상태 저장
+const state = { theme: 'dark' };
+function setTheme(t) {
+  state.theme = t;
+  document.documentElement.dataset.theme = t;
+  localStorage.setItem('theme', t);
+}
+        </code></pre>
+
+        <div class="table-wrap" style="margin-top: 20px;">
+          <table aria-describedby="table-caption">
+            <caption id="table-caption" class="subtle" style="caption-side: bottom; padding: 8px 0;">
+              브라우저 호환성 요약(샘플 데이터)
+            </caption>
+            <thead>
+              <tr>
+                <th>기능</th>
+                <th>Chrome</th>
+                <th>Firefox</th>
+                <th>Safari</th>
+                <th>Edge</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>CSS Grid</td>
+                <td>지원</td>
+                <td>지원</td>
+                <td>지원</td>
+                <td>지원</td>
+              </tr>
+              <tr>
+                <td>prefers-color-scheme</td>
+                <td>지원</td>
+                <td>지원</td>
+                <td>지원</td>
+                <td>지원</td>
+              </tr>
+              <tr>
+                <td>View Transitions</td>
+                <td>부분</td>
+                <td>미정</td>
+                <td>부분</td>
+                <td>부분</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <aside aria-labelledby="aside-title">
+        <h2 id="aside-title">빠른 링크</h2>
+        <ul>
+          <li><a href="#get-started">설치/시작 가이드</a></li>
+          <li><a href="#docs">컴포넌트 문서</a></li>
+          <li><a href="#contact">문의/지원</a></li>
+        </ul>
+
+        <h3 style="margin-top: 22px;">상태 배지</h3>
+        <p>
+          <span class="tag" style="color:#0b1a12;background:rgba(70,208,140,.5);border-color:#1b6b46;">Stable</span>
+          <span class="tag" style="color:#20140b;background:rgba(255,180,84,.5);border-color:#7a4f13;">Beta</span>
+          <span class="tag" style="color:#1f0b0b;background:rgba(255,107,107,.45);border-color:#7a2020;">Breaking</span>
+        </p>
+
+        <h3>미디어 예시</h3>
+        <figure style="margin:0;">
+          <div class="thumb" role="img" aria-label="추상적 배경 아트"></div>
+          <figcaption class="subtle">Fig 1. 추상적 배경 아트(데코)</figcaption>
+        </figure>
+      </aside>
+    </div>
+
+    <section id="docs" style="margin-top: var(--space-xl);" aria-labelledby="docs-title">
+      <span class="kicker">Docs</span>
+      <h2 id="docs-title">문서 예시와 패턴</h2>
+
+      <h3>목차</h3>
+      <ol>
+        <li>설치</li>
+        <li>레이아웃</li>
+        <li>컴포넌트</li>
+        <li>유틸리티</li>
+      </ol>
+
+      <h3 id="get-started">설치</h3>
+      <p>CDN 혹은 번들러 환경에 맞춰 CSS와 JS를 로드하세요.</p>
+      <pre><code>&lt;link rel="stylesheet" href="/dist/styles.css"&gt;
+&lt;script defer src="/dist/app.js"&gt;&lt;/script&gt;</code></pre>
+
+      <h3>레이아웃</h3>
+      <p><code>container</code>와 <code>grid</code> 유틸리티를 사용하면 브레이크포인트 없이도 반응형이 자동으로 조정됩니다.</p>
+
+      <h3>접근성 팁</h3>
+      <ul>
+        <li><strong>레이블:</strong> 모든 입력에 <code>&lt;label for&gt;</code>과 <code>id</code>를 매칭</li>
+        <li><strong>포커스:</strong> 키보드 탭 순서와 포커스 스타일 제공</li>
+        <li><strong>대체 텍스트:</strong> 의미 있는 이미지에는 <code>alt</code> 또는 ARIA 라벨 제공</li>
+      </ul>
+    </section>
+
+    <section id="forms" style="margin-top: var(--space-xl);" aria-labelledby="forms-title">
+      <span class="kicker">Forms</span>
+      <h2 id="forms-title">폼 예제</h2>
+
+      <form id="contact" novalidate>
+        <div class="form-grid">
+          <div class="form-item">
+            <label for="name">이름</label>
+            <input type="text" id="name" name="name" placeholder="홍길동" autocomplete="name" required />
+            <p class="help" id="nameHelp">실명을 입력하세요.</p>
+          </div>
+          <div class="form-item">
+            <label for="email">이메일</label>
+            <input type="email" id="email" name="email" placeholder="you@example.com" autocomplete="email" required />
+            <p class="help" id="emailHelp">연락 가능한 이메일 주소.</p>
+          </div>
+          <div class="form-item">
+            <label for="topic">문의 유형</label>
+            <select id="topic" name="topic" required>
+              <option value="">선택하세요</option>
+              <option value="bug">버그 신고</option>
+              <option value="feature">기능 요청</option>
+              <option value="help">도움 요청</option>
+            </select>
+          </div>
+          <div class="form-item">
+            <label for="website">웹사이트 (선택)</label>
+            <input type="url" id="website" name="website" placeholder="https://example.com" inputmode="url" />
+          </div>
+          <div class="form-item" style="grid-column: 1 / -1;">
+            <label for="message">메시지</label>
+            <textarea id="message" name="message" rows="5" placeholder="자세한 내용을 적어주세요." required></textarea>
+            <p class="help">최소 10자 이상 입력.</p>
+          </div>
+        </div>
+
+        <fieldset style="margin-top: 12px; border:1px solid var(--border); padding: 12px 14px; border-radius: 10px;">
+          <legend class="subtle">알림 설정</legend>
+          <label style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
+            <input type="checkbox" name="notify" value="email" checked> 이메일 알림
+          </label>
+          <label style="display:flex;gap:8px;align-items:center;">
+            <input type="checkbox" name="notify" value="sms"> SMS 알림
+          </label>
+        </fieldset>
+
+        <div style="display:flex; gap:10px; margin-top: 16px;">
+          <button type="submit" class="btn btn-primary">제출</button>
+          <button type="reset" class="btn">초기화</button>
+        </div>
+
+        <p id="formStatus" role="status" aria-live="polite" class="subtle" style="margin-top: 10px;"></p>
+      </form>
+    </section>
+  </main>
+
+  <footer role="contentinfo">
+    <div class="container footer-grid">
+      <div>
+        <h3 style="margin-top:0;">Sample UI</h3>
+        <p class="subtle">웹을 단순하고 아름답게. 이 샘플은 자유롭게 수정/배포할 수 있습니다.</p>
+      </div>
+      <div>
+        <h4>리소스</h4>
+        <ul>
+          <li><a href="#docs">문서</a></li>
+          <li><a href="#features">컴포넌트</a></li>
+          <li><a href="#">가이드</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>커뮤니티</h4>
+        <ul>
+          <li><a href="#">이슈 트래커</a></li>
+          <li><a href="#">토론 포럼</a></li>
+          <li><a href="#">기여 가이드</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>법적 고지</h4>
+        <ul>
+          <li><a href="#">라이선스</a></li>
+          <li><a href="#">개인정보 처리방침</a></li>
+          <li><a href="#">쿠키 설정</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="container" style="margin-top: 16px;">
+      <small class="subtle">© 2025 Sample UI. All rights reserved.</small>
+    </div>
+  </footer>
+
+  <script>
+    // 테마 토글
+    (function() {
+      const key = 'theme';
+      const systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const initial = localStorage.getItem(key) || (systemDark ? 'dark' : 'dark'); // 기본 다크
+      document.documentElement.dataset.theme = initial;
+
+      const btn = document.getElementById('themeToggle');
+      const update = () => {
+        const current = document.documentElement.dataset.theme;
+        const next = current === 'dark' ? 'light' : 'dark';
+        document.documentElement.dataset.theme = next;
+        localStorage.setItem(key, next);
+        btn.setAttribute('aria-pressed', String(next === 'light'));
+        btn.lastElementChild.textContent = next === 'light' ? '☀️' : '🌙';
+      };
+      btn.addEventListener('click', update);
+    })();
+
+    // 간단한 폼 유효성
+    (function() {
+      const form = document.getElementById('contact');
+      const status = document.getElementById('formStatus');
+
+      function showStatus(text, type = 'info') {
+        status.textContent = text;
+        status.style.color =
+          type === 'error' ? '#ff6b6b' :
+          type === 'success' ? '#46d08c' :
+          '#b7bfd4';
+      }
+
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const fd = new FormData(form);
+        const name = (fd.get('name') || '').toString().trim();
+        const email = (fd.get('email') || '').toString().trim();
+        const message = (fd.get('message') || '').toString().trim();
+
+        if (name.length < 2) {
+          showStatus('이름을 올바르게 입력해주세요.', 'error');
+          form.querySelector('#name').focus();
+          return;
+        }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          showStatus('올바른 이메일 주소를 입력하세요.', 'error');
+          form.querySelector('#email').focus();
+          return;
+        }
+        if (message.length < 10) {
+          showStatus('메시지를 최소 10자 이상 입력하세요.', 'error');
+          form.querySelector('#message').focus();
+          return;
+        }
+
+        // 가짜 제출 지연
+        showStatus('제출 중...', 'info');
+        setTimeout(() => {
+          showStatus('성공적으로 제출되었습니다. 곧 연락드릴게요!', 'success');
+          form.reset();
+        }, 800);
+      });
+    })();
+  </script>
+</body>
+</html>
+```
