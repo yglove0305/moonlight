@@ -1,811 +1,753 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="utf-8" />
-  <title>로컬 메신저 (LocalStorage)</title>
+  <meta charset="UTF-8" />
+  <title>로컬 메신저 - LocalStorage + P2P</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    :root{
-      --bg:#0f172a;
-      --panel:#111827;
-      --muted:#94a3b8;
-      --soft:#1f2937;
-      --accent:#22d3ee;
-      --accent-2:#60a5fa;
-      --text:#e5e7eb;
-      --danger:#ef4444;
-      --success:#10b981;
-      --warning:#f59e0b;
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --muted: #9ca3af;
+      --text: #e5e7eb;
+      --accent: #22d3ee;
+      --accent2: #60a5fa;
+      --danger: #f87171;
+      --success: #34d399;
+      --border: #1f2937;
     }
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{
-      margin:0;
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Apple SD Gothic Neo, Noto Sans KR, Malgun Gothic, Arial, "Apple Color Emoji","Segoe UI Emoji";
-      background:linear-gradient(130deg, #0b1227 0%, #0d1328 40%, #0e162f 100%);
-      color:var(--text);
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
     }
-
-    /* Layout */
-    .container{
-      display:flex;
-      height:100vh;
-      width:100%;
-      align-items:center;
-      justify-content:center;
-      padding:24px;
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 18px; border-bottom: 1px solid var(--border); background: #0b1222;
+      position: sticky; top: 0; z-index: 10;
     }
-    .card{
-      width:min(1100px, 100%);
-      height:min(760px, calc(100vh - 48px));
-      background:rgba(17,24,39,0.86);
-      border:1px solid rgba(255,255,255,0.06);
-      backdrop-filter: blur(10px);
-      border-radius:16px;
-      overflow:hidden;
-      display:flex;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+    header h1 { font-size: 18px; margin: 0; letter-spacing: .3px; }
+    header .right { display: flex; gap: 10px; align-items: center; }
+    header .badge { padding: 2px 8px; border-radius: 999px; font-size: 12px; background: #0b2830; color: var(--accent); border: 1px solid #12424c; }
+    header button { background: #12213a; color: var(--text); border: 1px solid var(--border); padding: 8px 12px; border-radius: 8px; cursor: pointer; }
+    main { display: grid; grid-template-columns: 320px 1fr; min-height: calc(100vh - 56px); }
+    aside { border-right: 1px solid var(--border); background: #0b1020; padding: 12px; }
+    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 12px; }
+    .stack { display: flex; flex-direction: column; gap: 10px; }
+    .row { display: flex; align-items: center; gap: 10px; }
+    .search { width: 100%; background: #0c1426; color: var(--text); border: 1px solid var(--border); padding: 10px 12px; border-radius: 8px; }
+    .section-title { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin: 8px 2px; }
+    .user-item, .chat-item {
+      display: grid; grid-template-columns: 36px 1fr auto; gap: 10px; align-items: center;
+      padding: 8px; border-radius: 10px; cursor: pointer; border: 1px solid transparent;
     }
-
-    /* Left panel: users */
-    .sidebar{
-      width:320px;
-      border-right:1px solid rgba(255,255,255,0.06);
-      background:linear-gradient(180deg, rgba(31,41,55,0.7), rgba(31,41,55,0.35));
-      display:flex; flex-direction:column;
+    .user-item:hover, .chat-item:hover { background: #0c1426; border-color: var(--border); }
+    .avatar {
+      width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center;
+      color: #02131a; font-weight: 700; background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border: 1px solid #0b2236;
     }
-    .sidebar-header{
-      padding:16px;
-      border-bottom:1px solid rgba(255,255,255,0.06);
+    .status { width: 10px; height: 10px; border-radius: 50%; background: var(--danger); border: 1px solid #1f2937; }
+    .status.online { background: #10b981; }
+    .muted { color: var(--muted); font-size: 12px; }
+    .pill { padding: 2px 6px; border: 1px solid var(--border); border-radius: 999px; font-size: 11px; color: var(--muted); }
+    .danger { color: var(--danger); }
+    .success { color: var(--success); }
+    .content { display: grid; grid-template-rows: auto 1fr auto; }
+    .chat-header { border-bottom: 1px solid var(--border); padding: 10px 14px; display: flex; align-items: center; gap: 10px; }
+    .messages { padding: 14px; overflow: auto; display: flex; flex-direction: column; gap: 8px; }
+    .bubble {
+      max-width: 70%; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border);
+      background: #0b162a; position: relative; word-wrap: break-word; white-space: pre-wrap;
     }
-    .brand{
-      font-weight:700;
-      letter-spacing:0.3px;
-      display:flex; align-items:center; gap:10px;
+    .me { align-self: flex-end; background: #0b243a; border-color: #1b3857; }
+    .meta { font-size: 11px; color: var(--muted); margin-top: 4px; }
+    .composer { border-top: 1px solid var(--border); padding: 10px; display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+    textarea {
+      resize: none; height: 64px; background: #0c1426; color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px;
     }
-    .brand-badge{
-      width:10px; height:10px; border-radius:50%;
-      background:linear-gradient(90deg,var(--accent),var(--accent-2));
-      box-shadow: 0 0 12px rgba(34,211,238,0.8);
+    .btn {
+      background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #052230; font-weight: 700; border: 0; padding: 10px 14px; border-radius: 10px; cursor: pointer;
     }
-    .me-row{
-      padding:12px 16px;
-      border-bottom:1px dashed rgba(255,255,255,0.06);
-      font-size:14px;
-      color:var(--muted);
-      display:flex; align-items:center; justify-content:space-between;
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .codebox {
+      background: #06121d; border: 1px dashed #1b3b5a; padding: 10px; border-radius: 10px; color: #a3e1ff; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      word-break: break-all; white-space: pre-wrap;
     }
-    .me-row .me{
-      display:flex; align-items:center; gap:8px;
+    .auth {
+      max-width: 420px; margin: 48px auto; padding: 20px; border: 1px solid var(--border); border-radius: 14px; background: var(--panel);
     }
-    .me-row .logout-btn{
-      color:#a1a1aa; background:transparent; border:1px solid rgba(255,255,255,0.12);
-      padding:6px 10px; border-radius:8px; cursor:pointer;
+    label { font-size: 13px; color: var(--muted); }
+    input {
+      width: 100%; background: #0c1426; color: var(--text); border: 1px solid var(--border); padding: 10px 12px; border-radius: 8px;
     }
-    .me-row .logout-btn:hover{border-color:rgba(255,255,255,0.25); color:#fafafa}
-
-    .search-wrap{ padding:12px 12px 8px 12px; }
-    .input{
-      width:100%;
-      background:rgba(0,0,0,0.3);
-      border:1px solid rgba(255,255,255,0.08);
-      border-radius:10px;
-      color:var(--text);
-      padding:10px 12px;
-      outline:none;
-    }
-    .input:focus{ border-color: rgba(96,165,250,0.6); box-shadow:0 0 0 3px rgba(96,165,250,0.15); }
-
-    .user-list{
-      overflow:auto;
-      padding:8px 8px 16px;
-      display:flex; flex-direction:column; gap:8px;
-    }
-    .user-item{
-      display:flex; align-items:center; justify-content:space-between;
-      gap:10px;
-      padding:10px;
-      border:1px solid rgba(255,255,255,0.06);
-      background:rgba(17,24,39,0.35);
-      border-radius:12px;
-      cursor:pointer;
-      transition: transform 0.08s ease, background 0.2s ease, border 0.2s ease;
-    }
-    .user-item:hover{ transform: translateY(-1px); border-color: rgba(255,255,255,0.12); }
-    .user-name{ font-weight:600 }
-    .tag{ font-size:11px; color:#a1a1aa; border:1px solid rgba(255,255,255,0.12); padding:3px 6px; border-radius:999px }
-    .pin{
-      border:none; background:transparent; color:#9ca3af; cursor:pointer;
-    }
-    .pin.active{ color:var(--accent) }
-
-    /* Right panel: chat */
-    .chat{
-      flex:1;
-      display:flex;
-      flex-direction:column;
-      background: radial-gradient(1200px 600px at 80% -100px, rgba(34,211,238,0.12), transparent 55%) no-repeat,
-                  radial-gradient(900px 500px at 0% 100%, rgba(96,165,250,0.12), transparent 60%) no-repeat;
-    }
-    .chat-header{
-      padding:14px 16px;
-      border-bottom:1px solid rgba(255,255,255,0.06);
-      display:flex; align-items:center; justify-content:space-between;
-    }
-    .chat-title{ font-weight:700 }
-    .chat-meta{ font-size:12px; color:#9ca3af }
-
-    .messages{
-      flex:1;
-      overflow:auto;
-      padding:18px 14px 10px 14px;
-      display:flex; flex-direction:column; gap:8px;
-    }
-    .empty-state{
-      margin:auto; text-align:center; color:#9aa3b1;
-    }
-    .bubble{
-      max-width:70%;
-      padding:10px 12px;
-      border-radius:12px;
-      line-height:1.45;
-      border:1px solid rgba(255,255,255,0.06);
-      background:rgba(255,255,255,0.04);
-      position:relative;
-      backdrop-filter: blur(4px);
-    }
-    .bubble.me{
-      margin-left:auto;
-      background:linear-gradient(135deg, rgba(34,211,238,0.18), rgba(96,165,250,0.18));
-      border-color:rgba(255,255,255,0.12);
-    }
-    .bubble .meta{
-      margin-top:6px;
-      font-size:11px;
-      color:#a3a3a3;
-      display:flex; justify-content:space-between; gap:12px;
-    }
-    .bubble .actions{
-      visibility:hidden;
-      display:flex; gap:6px;
-    }
-    .bubble:hover .actions{ visibility:visible; }
-    .bubble .btn-link{
-      font-size:11px; color:#cbd5e1; background:transparent; border:none; cursor:pointer;
-    }
-    .composer{
-      border-top:1px solid rgba(255,255,255,0.06);
-      padding:10px;
-      display:flex; gap:8px; align-items:flex-end;
-      background:linear-gradient(180deg, rgba(17,24,39,0.75), rgba(17,24,39,0.65));
-    }
-    .textarea{
-      flex:1; min-height:44px; max-height:120px; resize:vertical;
-      padding:10px 12px; border-radius:10px; color:var(--text);
-      background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.08); outline:none;
-    }
-    .send-btn{
-      height:44px; padding:0 16px; border-radius:10px; border:none; cursor:pointer;
-      background:linear-gradient(90deg, var(--accent), var(--accent-2));
-      color:#0b1020; font-weight:700;
-      box-shadow: 0 8px 30px rgba(34,211,238,0.25);
-    }
-    .send-btn:disabled{ opacity:0.5; cursor:not-allowed }
-
-    /* Auth view */
-    .auth{
-      width:min(480px, 100%);
-      background:rgba(17,24,39,0.86);
-      border:1px solid rgba(255,255,255,0.06);
-      border-radius:16px;
-      padding:22px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.35);
-    }
-    .tabs{ display:flex; gap:8px; margin-bottom:16px }
-    .tab{
-      flex:1; text-align:center; padding:10px 0; border-radius:10px; cursor:pointer;
-      border:1px solid rgba(255,255,255,0.08);
-      color:#cbd5e1; background:rgba(0,0,0,0.25);
-    }
-    .tab.active{
-      color:#0e1328; font-weight:700;
-      background:linear-gradient(90deg, var(--accent), var(--accent-2));
-      border-color:transparent;
-    }
-    .form-row{ display:flex; flex-direction:column; gap:8px; margin-bottom:12px }
-    .label{ font-size:12px; color:#a1a1aa }
-    .help{ font-size:12px; color:#8aa3c9 }
-    .btn{
-      width:100%; padding:12px; border:none; border-radius:10px; cursor:pointer; font-weight:700;
-      background:linear-gradient(90deg, var(--accent), var(--accent-2)); color:#0e1328;
-    }
-    .muted-btn{
-      width:100%; padding:10px; border:1px dashed rgba(255,255,255,0.15); border-radius:10px; cursor:pointer;
-      color:#cbd5e1; background:transparent; margin-top:8px;
-    }
-    .inline-msg{ font-size:13px; margin-top:6px }
-    .ok{ color:var(--success) }
-    .err{ color:var(--danger) }
-
-    /* Utility */
-    .row{ display:flex; gap:8px; align-items:center }
-    .grow{ flex:1 }
-    .hide{ display:none !important }
-
-    @media (max-width: 860px){
-      .card{ flex-direction:column; height:auto; }
-      .sidebar{ width:100%; height:320px; }
-      .chat{ height:520px }
+    .gap { display: grid; gap: 8px; }
+    .hidden { display: none !important; }
+    .small { font-size: 12px; color: var(--muted); }
+    .hr { border-top: 1px solid var(--border); margin: 8px 0; }
+    .right-align { text-align: right; }
+    .center { text-align: center; }
+    .link { color: var(--accent); cursor: pointer; }
+    .toast {
+      position: fixed; bottom: 16px; right: 16px; background: #0c1426; border: 1px solid var(--border); padding: 10px 12px; border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.3); z-index: 1000; max-width: 320px; font-size: 14px;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <!-- Auth view -->
-    <div class="auth" id="authView">
-      <div class="brand" style="margin-bottom:12px">
-        <span class="brand-badge"></span>
-        <span>Local Messenger</span>
-      </div>
-      <div class="tabs">
-        <button class="tab active" id="tabLogin">로그인</button>
-        <button class="tab" id="tabSignup">회원가입</button>
-      </div>
-
-      <div id="loginForm">
-        <div class="form-row">
-          <label class="label">아이디</label>
-          <input class="input" id="loginUsername" placeholder="영문/숫자 3~16자" />
-        </div>
-        <div class="form-row">
-          <label class="label">비밀번호</label>
-          <input class="input" id="loginPassword" type="password" placeholder="최소 6자" />
-        </div>
-        <button class="btn" id="loginBtn">로그인</button>
-        <div class="inline-msg" id="loginMsg"></div>
-      </div>
-
-      <div id="signupForm" class="hide">
-        <div class="form-row">
-          <label class="label">아이디</label>
-          <input class="input" id="signupUsername" placeholder="영문/숫자 3~16자" />
-        </div>
-        <div class="form-row">
-          <label class="label">비밀번호</label>
-          <input class="input" id="signupPassword" type="password" placeholder="최소 6자" />
-        </div>
-        <div class="form-row">
-          <label class="label">비밀번호 확인</label>
-          <input class="input" id="signupPassword2" type="password" placeholder="한 번 더 입력" />
-        </div>
-        <button class="btn" id="signupBtn">회원가입</button>
-        <div class="inline-msg" id="signupMsg"></div>
-        <button class="muted-btn" id="seedBtn">샘플 유저/메시지 생성</button>
-        <div class="help">로컬 브라우저 LocalStorage에 저장됩니다.</div>
-      </div>
+  <header>
+    <h1>로컬 메신저</h1>
+    <div class="right">
+      <span id="sessionUser" class="badge">미로그인</span>
+      <button id="logoutBtn" class="hidden">로그아웃</button>
     </div>
+  </header>
 
-    <!-- App view -->
-    <div class="card hide" id="appView">
-      <aside class="sidebar">
-        <div class="sidebar-header">
-          <div class="brand">
-            <span class="brand-badge"></span>
-            <span>Local Messenger</span>
-          </div>
-        </div>
-        <div class="me-row">
-          <div class="me">
-            <span style="width:8px;height:8px;border-radius:50%;background:linear-gradient(90deg, var(--accent), var(--accent-2));display:inline-block"></span>
-            <span id="meName">@me</span>
-          </div>
-          <button class="logout-btn" id="logoutBtn">로그아웃</button>
-        </div>
-
-        <div class="search-wrap">
-          <input id="userSearch" class="input" placeholder="유저 검색 (아이디)" />
-        </div>
-        <div class="user-list" id="userList"></div>
-      </aside>
-
-      <main class="chat">
-        <div class="chat-header">
-          <div>
-            <div class="chat-title" id="chatTitle">대화 상대를 선택하세요</div>
-            <div class="chat-meta" id="chatMeta"></div>
-          </div>
-          <div class="row">
-            <button id="clearChatBtn" class="logout-btn">대화 비우기</button>
-          </div>
-        </div>
-
-        <div class="messages" id="messages">
-          <div class="empty-state">
-            <div style="font-weight:700; margin-bottom:6px">아직 대화가 없어요</div>
-            <div style="font-size:14px">왼쪽에서 유저를 선택해 메시지를 보내보세요.</div>
-          </div>
-        </div>
-
-        <div class="composer">
-          <textarea id="composerText" class="textarea" placeholder="메시지를 입력하세요 (Enter 전송, Shift+Enter 줄바꿈)"></textarea>
-          <button class="send-btn" id="sendBtn" disabled>전송</button>
-        </div>
-      </main>
+  <div id="authView" class="auth">
+    <h2>로그인</h2>
+    <div class="gap">
+      <label>아이디</label>
+      <input id="loginId" placeholder="아이디" />
+      <label>비밀번호</label>
+      <input id="loginPw" type="password" placeholder="비밀번호" />
+      <button id="loginBtn" class="btn">로그인</button>
     </div>
+    <div class="hr"></div>
+    <div class="small">처음이라면 <span id="goSignup" class="link">회원가입</span></div>
   </div>
 
+  <div id="signupView" class="auth hidden">
+    <h2>회원가입</h2>
+    <div class="gap">
+      <label>아이디</label>
+      <input id="signId" placeholder="아이디" />
+      <label>닉네임</label>
+      <input id="signNick" placeholder="닉네임" />
+      <label>비밀번호</label>
+      <input id="signPw" type="password" placeholder="비밀번호" />
+      <button id="signupBtn" class="btn">가입하기</button>
+    </div>
+    <div class="hr"></div>
+    <div class="small">이미 계정이 있나요? <span id="goLogin" class="link">로그인</span></div>
+  </div>
+
+  <main id="appView" class="hidden">
+    <aside>
+      <div class="stack">
+        <input id="searchBox" class="search" placeholder="메시지/유저 검색" />
+        <div class="panel stack">
+          <div class="section-title">나의 프로필</div>
+          <div class="row">
+            <div id="myAvatar" class="avatar">ME</div>
+            <div>
+              <div id="myNick">-</div>
+              <div class="muted" id="myId">-</div>
+            </div>
+            <div class="status online" title="online"></div>
+          </div>
+        </div>
+
+        <div class="panel stack">
+          <div class="section-title">같은 브라우저의 사용자</div>
+          <div id="tabUsers" class="stack small"></div>
+        </div>
+
+        <div class="panel stack">
+          <div class="section-title">직접 연결(P2P)</div>
+          <div class="grid2">
+            <button id="makeOffer" class="btn">직접 연결 시작</button>
+            <button id="acceptOffer" class="btn">직접 연결 수락</button>
+          </div>
+          <div class="small">다른 기기와 연결하려면 JSON을 복붙해 교환하세요.</div>
+          <div class="hr"></div>
+          <div class="small">내 연결 코드</div>
+          <div id="localSignal" class="codebox small">-</div>
+          <div class="small">상대의 코드 붙여넣기</div>
+          <textarea id="remoteSignal" placeholder="여기에 상대 JSON을 붙여넣고 엔터/버튼으로 진행"></textarea>
+          <div class="right-align">
+            <button id="applySignal" class="btn">코드 적용</button>
+          </div>
+        </div>
+
+        <div class="panel stack">
+          <div class="section-title">대화 목록</div>
+          <div id="chatList" class="stack"></div>
+        </div>
+      </div>
+    </aside>
+
+    <section class="content">
+      <div class="chat-header">
+        <div class="avatar" id="peerAvatar">PE</div>
+        <div>
+          <div id="peerNick">상대를 선택하거나 연결하세요</div>
+          <div class="muted" id="peerId">-</div>
+        </div>
+        <div class="pill" id="connState">disconnected</div>
+        <div class="pill" id="typingState">idle</div>
+        <div class="pill" id="unreadState">0 unread</div>
+        <div style="margin-left:auto" class="small muted">대화는 브라우저 로컬스토리지에만 저장됩니다</div>
+      </div>
+
+      <div id="messages" class="messages"></div>
+
+      <div class="composer">
+        <textarea id="msgBox" placeholder="메시지를 입력하세요. Shift+Enter 줄바꿈, Enter 전송"></textarea>
+        <button id="sendBtn" class="btn">전송</button>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast hidden"></div>
+
   <script>
-    // ===== Storage Keys =====
-    const KEY_USERS = 'lm_users';
-    const KEY_MESSAGES = 'lm_messages';
-    const KEY_SESSION = 'lm_session';
-    const KEY_PINS = 'lm_pins';
-
-    // ===== Utilities =====
-    const $ = sel => document.querySelector(sel);
-    const $$ = sel => Array.from(document.querySelectorAll(sel));
-
-    function nowTs(){ return Date.now(); }
-    function fmtTime(ts){
-      const d = new Date(ts);
-      const yyyy = d.getFullYear();
-      const mm = String(d.getMonth()+1).padStart(2,'0');
-      const dd = String(d.getDate()).padStart(2,'0');
-      const hh = String(d.getHours()).padStart(2,'0');
-      const mi = String(d.getMinutes()).padStart(2,'0');
-      return `${yyyy}-${mm}-${dd} ${hh}:${mi}`;
-    }
-
-    // 간단 해시(djb2) - 데모 용도
-    function hash(str){
-      let h = 5381;
-      for(let i=0;i<str.length;i++){
-        h = ((h << 5) + h) + str.charCodeAt(i);
-        h = h & 0xffffffff;
-      }
-      return (h >>> 0).toString(16);
-    }
-
-    // Storage helpers
-    function read(key, fallback){
-      try{ const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
-      catch(e){ return fallback; }
-    }
-    function write(key, value){
-      localStorage.setItem(key, JSON.stringify(value));
-    }
-
-    // Data access
-    function getUsers(){ return read(KEY_USERS, []); }
-    function setUsers(list){ write(KEY_USERS, list); }
-    function getMessages(){ return read(KEY_MESSAGES, []); }
-    function setMessages(list){ write(KEY_MESSAGES, list); }
-    function getSession(){ return read(KEY_SESSION, null); }
-    function setSession(sess){ write(KEY_SESSION, sess); }
-    function getPins(){ return read(KEY_PINS, {}); }
-    function setPins(pins){ write(KEY_PINS, pins); }
-
-    function ensureInit(){
-      if(!localStorage.getItem(KEY_USERS)) setUsers([]);
-      if(!localStorage.getItem(KEY_MESSAGES)) setMessages([]);
-      if(!localStorage.getItem(KEY_PINS)) setPins({});
-    }
-
-    // ===== Auth Logic =====
-    function validateUsername(u){
-      return /^[a-z0-9_]{3,16}$/i.test(u);
-    }
-    function validatePassword(p){
-      return typeof p === 'string' && p.length >= 6;
-    }
-
-    function userExists(username){
-      const users = getUsers();
-      return users.some(u => u.username.toLowerCase() === username.toLowerCase());
-    }
-    function createUser(username, password){
-      const users = getUsers();
-      const id = 'u_' + hash(username + nowTs());
-      const user = {
-        id, username,
-        passwordHash: hash(password),
-        createdAt: nowTs()
-      };
-      users.push(user);
-      setUsers(users);
-      return user;
-    }
-    function findUser(username){
-      return getUsers().find(u => u.username.toLowerCase() === username.toLowerCase());
-    }
-    function login(username, password){
-      const u = findUser(username);
-      if(!u) return {ok:false, msg:'존재하지 않는 아이디입니다.'};
-      if(u.passwordHash !== hash(password)) return {ok:false, msg:'비밀번호가 올바르지 않습니다.'};
-      setSession({ userId: u.id, username: u.username, ts: nowTs() });
-      return {ok:true, user:u};
-    }
-    function logout(){
-      localStorage.removeItem(KEY_SESSION);
-    }
-
-    // ===== Messaging Logic =====
-    // 메시지는 {id, from, to, text, ts, deleted:false}
-    function convoKey(a, b){
-      return [a, b].sort().join('::');
-    }
-    function sendMessage(from, to, text){
-      const list = getMessages();
-      const msg = {
-        id: 'm_' + hash(from + to + nowTs() + Math.random()),
-        from, to, text: text.trim(),
-        ts: nowTs(),
-        deleted: false
-      };
-      list.push(msg);
-      setMessages(list);
-      return msg;
-    }
-    function deleteMessage(msgId){
-      const list = getMessages();
-      const idx = list.findIndex(m => m.id === msgId);
-      if(idx >= 0){
-        list[idx].deleted = true;
-        setMessages(list);
-      }
-    }
-    function clearConversation(a, b){
-      const list = getMessages();
-      const filtered = list.map(m => {
-        if( (m.from === a && m.to === b) || (m.from === b && m.to === a) ){
-          return { ...m, deleted:true };
-        }
-        return m;
-      });
-      setMessages(filtered);
-    }
-    function fetchConversation(a, b){
-      return getMessages()
-        .filter(m => !m.deleted && ((m.from === a && m.to === b) || (m.from === b && m.to === a)))
-        .sort((x,y)=> x.ts - y.ts);
-    }
-
-    // ===== UI State =====
-    let state = {
-      me: null,           // {id, username}
-      peer: null,         // {id, username}
-      search: ''
+    // -------------------------
+    // 유틸
+    // -------------------------
+    const $ = (sel) => document.querySelector(sel);
+    const el = (tag, cls) => { const e = document.createElement(tag); if (cls) e.className = cls; return e; };
+    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+    const now = () => new Date().toISOString();
+    const sha256 = async (text) => {
+      const enc = new TextEncoder().encode(text);
+      const hash = await crypto.subtle.digest("SHA-256", enc);
+      return [...new Uint8Array(hash)].map(b => b.toString(16).padStart(2, "0")).join("");
+    };
+    const toast = (msg, ms=2500) => {
+      const t = $("#toast");
+      t.textContent = msg; t.classList.remove("hidden");
+      setTimeout(() => t.classList.add("hidden"), ms);
     };
 
-    // ===== Rendering =====
-    function renderUsers(){
-      const box = $('#userList');
-      const pins = getPins();
-      const users = getUsers()
-        .filter(u => u.id !== state.me?.id)
-        .filter(u => u.username.toLowerCase().includes(state.search.toLowerCase()));
+    // -------------------------
+    // 저장키
+    // -------------------------
+    const KEY_USERS = "lm:users";           // { id, nick, passHash, createdAt }
+    const KEY_SESS  = "lm:session";         // { id }
+    const KEY_CHATS = "lm:chats";           // { [peerId]: [ {from,to,body,ts,read} ] }
+    const KEY_PROF  = "lm:profile";         // { id, nick }
+    const bc = ("BroadcastChannel" in window) ? new BroadcastChannel("lm:presence") : null;
 
-      // pin 우선 정렬
-      users.sort((a,b)=>{
-        const aPinned = pins[a.id] ? 1 : 0;
-        const bPinned = pins[b.id] ? 1 : 0;
-        if(bPinned - aPinned !== 0) return bPinned - aPinned;
-        return a.username.localeCompare(b.username);
-      });
+    // -------------------------
+    // 상태
+    // -------------------------
+    let state = {
+      me: null,         // { id, nick }
+      currentPeerId: null,
+      rtc: null,
+      dc: null,
+      pendingRole: null, // "offer" | "answer" | null
+      pendingDesc: null,
+      unread: {},        // { [peerId]: count }
+      typingPeers: {},   // { [peerId]: bool }
+    };
 
-      box.innerHTML = '';
-      if(users.length === 0){
-        const div = document.createElement('div');
-        div.className = 'empty-state';
-        div.style.padding = '24px';
-        div.innerHTML = '표시할 유저가 없습니다.';
-        box.appendChild(div);
-        return;
-      }
+    // -------------------------
+    // 로컬스토리지 접근
+    // -------------------------
+    const loadUsers = () => JSON.parse(localStorage.getItem(KEY_USERS) || "[]");
+    const saveUsers = (u) => localStorage.setItem(KEY_USERS, JSON.stringify(u));
+    const getUser = (id) => loadUsers().find(u => u.id === id);
+    const setSession = (id) => localStorage.setItem(KEY_SESS, JSON.stringify({ id }));
+    const getSession = () => JSON.parse(localStorage.getItem(KEY_SESS) || "null");
+    const clearSession = () => localStorage.removeItem(KEY_SESS);
+    const loadChats = () => JSON.parse(localStorage.getItem(KEY_CHATS) || "{}");
+    const saveChats = (c) => localStorage.setItem(KEY_CHATS, JSON.stringify(c));
+    const saveProfile = (p) => localStorage.setItem(KEY_PROF, JSON.stringify(p));
+    const loadProfile = () => JSON.parse(localStorage.getItem(KEY_PROF) || "null");
 
-      users.forEach(u=>{
-        const row = document.createElement('div');
-        row.className = 'user-item';
-        row.dataset.uid = u.id;
-
-        const left = document.createElement('div');
-        left.className = 'row';
-        const dot = document.createElement('span');
-        dot.style.width='8px'; dot.style.height='8px'; dot.style.borderRadius='50%';
-        dot.style.background='linear-gradient(90deg, var(--accent), var(--accent-2))';
-        const name = document.createElement('div');
-        name.className = 'user-name';
-        name.textContent = u.username;
-
-        const tag = document.createElement('span');
-        tag.className = 'tag';
-        tag.textContent = '가입 ' + new Date(u.createdAt).toLocaleDateString();
-
-        left.appendChild(dot);
-        left.appendChild(name);
-        left.appendChild(tag);
-
-        const right = document.createElement('div');
-        right.className='row';
-
-        const pinBtn = document.createElement('button');
-        pinBtn.className = 'pin' + (getPins()[u.id] ? ' active' : '');
-        pinBtn.title = '상단 고정';
-        pinBtn.innerHTML = getPins()[u.id] ? '📌' : '📍';
-        pinBtn.addEventListener('click', (e)=>{
-          e.stopPropagation();
-          const pins = getPins();
-          if(pins[u.id]) delete pins[u.id];
-          else pins[u.id] = true;
-          setPins(pins);
-          renderUsers();
-        });
-
-        const openBtn = document.createElement('button');
-        openBtn.className = 'pin';
-        openBtn.title = '대화 열기';
-        openBtn.textContent = '💬';
-        openBtn.addEventListener('click', (e)=>{
-          e.stopPropagation();
-          openChat(u);
-        });
-
-        right.appendChild(pinBtn);
-        right.appendChild(openBtn);
-
-        row.appendChild(left);
-        row.appendChild(right);
-
-        row.addEventListener('click', ()=> openChat(u));
-        box.appendChild(row);
-      });
+    // -------------------------
+    // 인증
+    // -------------------------
+    async function signup(id, nick, pw) {
+      id = id.trim(); nick = nick.trim();
+      if (!id || !nick || !pw) throw new Error("모든 항목을 입력하세요.");
+      const users = loadUsers();
+      if (users.some(u => u.id === id)) throw new Error("이미 존재하는 아이디입니다.");
+      const passHash = await sha256(pw);
+      const user = { id, nick, passHash, createdAt: now() };
+      users.push(user); saveUsers(users);
+      toast("가입 완료. 로그인하세요.");
     }
 
-    function openChat(user){
-      state.peer = user;
-      $('#chatTitle').textContent = user.username + ' 과(와)의 대화';
-      $('#chatMeta').textContent = '메시지는 이 브라우저의 LocalStorage에만 저장됩니다.';
-      $('#sendBtn').disabled = false;
-      renderMessages();
+    async function login(id, pw) {
+      const users = loadUsers();
+      const user = users.find(u => u.id === id);
+      if (!user) throw new Error("존재하지 않는 아이디입니다.");
+      const passHash = await sha256(pw);
+      if (passHash !== user.passHash) throw new Error("비밀번호가 올바르지 않습니다.");
+      setSession(user.id);
+      saveProfile({ id: user.id, nick: user.nick });
+      return { id: user.id, nick: user.nick };
     }
 
-    function renderMessages(){
-      const list = $('#messages');
-      list.innerHTML = '';
-      if(!state.me || !state.peer){
-        const div = document.createElement('div');
-        div.className='empty-state';
-        div.innerHTML = '<div style="font-weight:700; margin-bottom:6px">대화 상대를 선택하세요</div>';
-        list.appendChild(div);
-        return;
-      }
-      const msgs = fetchConversation(state.me.id, state.peer.id);
-      if(msgs.length === 0){
-        const div = document.createElement('div');
-        div.className='empty-state';
-        div.innerHTML = '<div style="font-weight:700; margin-bottom:6px">대화를 시작해보세요</div><div style="font-size:14px">첫 메시지를 보내보세요.</div>';
-        list.appendChild(div);
-        return;
-      }
-      msgs.forEach(m=>{
-        const bubble = document.createElement('div');
-        bubble.className = 'bubble' + (m.from === state.me.id ? ' me' : '');
-        bubble.innerHTML = `
-          <div class="text">${escapeHtml(m.text).replace(/\n/g,'<br/>')}</div>
-          <div class="meta">
-            <span>${fmtTime(m.ts)}</span>
-            <span class="actions">
-              <button class="btn-link" data-act="copy" data-id="${m.id}">복사</button>
-              ${m.from === state.me.id ? `<button class="btn-link" data-act="del" data-id="${m.id}">삭제</button>` : ''}
-            </span>
-          </div>
-        `;
-        list.appendChild(bubble);
-      });
-      list.scrollTop = list.scrollHeight;
+    function logout() {
+      clearSession();
+      location.reload();
+    }
 
-      // action binding
-      $$('#messages .btn-link').forEach(btn=>{
-        btn.addEventListener('click', (e)=>{
-          const id = btn.getAttribute('data-id');
-          const act = btn.getAttribute('data-act');
-          if(act === 'copy'){
-            const msg = getMessages().find(m=>m.id===id);
-            if(msg && !msg.deleted){
-              navigator.clipboard?.writeText(msg.text);
-            }
-          }else if(act === 'del'){
-            if(confirm('이 메시지를 삭제하시겠습니까?')){
-              deleteMessage(id);
-              renderMessages();
+    // -------------------------
+    // UI 연결
+    // -------------------------
+    function showAuth() {
+      $("#authView").classList.remove("hidden");
+      $("#signupView").classList.add("hidden");
+      $("#appView").classList.add("hidden");
+      $("#logoutBtn").classList.add("hidden");
+      $("#sessionUser").textContent = "미로그인";
+    }
+    function showSignup() {
+      $("#authView").classList.add("hidden");
+      $("#signupView").classList.remove("hidden");
+    }
+    function showApp() {
+      $("#authView").classList.add("hidden");
+      $("#signupView").classList.add("hidden");
+      $("#appView").classList.remove("hidden");
+      $("#logoutBtn").classList.remove("hidden");
+    }
+
+    // -------------------------
+    // 존재감(같은 브라우저 탭)
+    // -------------------------
+    function announcePresence() {
+      if (!bc || !state.me) return;
+      bc.postMessage({ type: "presence", user: state.me, ts: Date.now() });
+    }
+    function setupPresence() {
+      if (!bc) return;
+      bc.onmessage = (ev) => {
+        const msg = ev.data || {};
+        if (msg.type === "presence") {
+          renderTabUsers(msg.user);
+        }
+        if (msg.type === "invite") {
+          // 수신자가 같은 브라우저 다른 탭일 때 채팅창 열도록
+          if (state.me && msg.to === state.me.id) {
+            openChatWith(msg.from);
+          }
+        }
+        if (msg.type === "im") {
+          if (state.me && msg.to === state.me.id) {
+            storeMessage(msg.from, { from: msg.from, to: msg.to, body: msg.body, ts: msg.ts, read: state.currentPeerId === msg.from });
+            if (state.currentPeerId !== msg.from) {
+              state.unread[msg.from] = (state.unread[msg.from]||0)+1;
+              updateUnreadState();
+              renderChatList();
+              toast(`새 메시지 from ${msg.from}`);
+            } else {
+              renderMessages(msg.from);
             }
           }
-        });
-      });
-    }
-
-    function escapeHtml(s){
-      return s
-        .replace(/&/g,'&amp;')
-        .replace(/</g,'&lt;')
-        .replace(/>/g,'&gt;')
-        .replace(/"/g,'&quot;')
-        .replace(/'/g,'&#39;');
-    }
-
-    // ===== Event Handlers =====
-    function bindAuth(){
-      const tabLogin = $('#tabLogin');
-      const tabSignup = $('#tabSignup');
-
-      tabLogin.addEventListener('click', ()=>{
-        tabLogin.classList.add('active');
-        tabSignup.classList.remove('active');
-        $('#loginForm').classList.remove('hide');
-        $('#signupForm').classList.add('hide');
-      });
-      tabSignup.addEventListener('click', ()=>{
-        tabSignup.classList.add('active');
-        tabLogin.classList.remove('active');
-        $('#signupForm').classList.remove('hide');
-        $('#loginForm').classList.add('hide');
-      });
-
-      // 로그인
-      $('#loginBtn').addEventListener('click', ()=>{
-        const u = $('#loginUsername').value.trim();
-        const p = $('#loginPassword').value;
-        const msg = $('#loginMsg');
-        msg.textContent='';
-
-        if(!validateUsername(u)){ msg.textContent='아이디 형식을 확인해주세요 (영문/숫자/언더스코어 3~16자)'; msg.className='inline-msg err'; return; }
-        if(!validatePassword(p)){ msg.textContent='비밀번호는 최소 6자입니다.'; msg.className='inline-msg err'; return; }
-
-        const res = login(u, p);
-        if(!res.ok){ msg.textContent = res.msg; msg.className='inline-msg err'; return; }
-
-        // 성공
-        msg.textContent='로그인 성공! 이동합니다.'; msg.className='inline-msg ok';
-        setTimeout(()=> initApp(), 300);
-      });
-
-      // 회원가입
-      $('#signupBtn').addEventListener('click', ()=>{
-        const u = $('#signupUsername').value.trim();
-        const p1 = $('#signupPassword').value;
-        const p2 = $('#signupPassword2').value;
-        const msg = $('#signupMsg');
-        msg.textContent='';
-
-        if(!validateUsername(u)){ msg.textContent='아이디 형식을 확인해주세요 (영문/숫자/언더스코어 3~16자)'; msg.className='inline-msg err'; return; }
-        if(userExists(u)){ msg.textContent='이미 존재하는 아이디입니다.'; msg.className='inline-msg err'; return; }
-        if(!validatePassword(p1)){ msg.textContent='비밀번호는 최소 6자입니다.'; msg.className='inline-msg err'; return; }
-        if(p1 !== p2){ msg.textContent='비밀번호 확인이 일치하지 않습니다.'; msg.className='inline-msg err'; return; }
-
-        const created = createUser(u, p1);
-        msg.textContent='회원가입 완료! 이제 로그인 해주세요.'; msg.className='inline-msg ok';
-
-        // 폼 리셋
-        $('#signupUsername').value = '';
-        $('#signupPassword').value = '';
-        $('#signupPassword2').value = '';
-
-        // 로그인 탭으로
-        $('#tabLogin').click();
-        $('#loginUsername').value = created.username;
-        $('#loginPassword').focus();
-      });
-
-      // Seed data
-      $('#seedBtn').addEventListener('click', ()=>{
-        if(!confirm('샘플 유저/메시지를 생성하시겠습니까? (기존 데이터 유지)')) return;
-
-        const names = ['alice','bob','charlie','dave','erin','frank'];
-        names.forEach(n=>{
-          if(!userExists(n)) createUser(n, 'password');
-        });
-
-        const users = getUsers();
-        const alice = users.find(u=>u.username==='alice');
-        const bob = users.find(u=>u.username==='bob');
-        if(alice && bob){
-          // 샘플 메시지 몇 개
-          sendMessage(alice.id, bob.id, '안녕하세요 Bob!\n테스트 메시지 입니다.');
-          sendMessage(bob.id, alice.id, '반가워요 Alice. 여긴 로컬 메신저예요.');
-          sendMessage(alice.id, bob.id, 'LocalStorage에만 저장돼요.');
         }
-        alert('샘플 데이터가 추가되었습니다. 회원가입 또는 로그인 후 확인해보세요.');
-      });
+        if (msg.type === "typing") {
+          if (state.me && msg.to === state.me.id) {
+            state.typingPeers[msg.from] = !!msg.typing;
+            updateTypingState();
+          }
+        }
+      };
+      // 주기적 브로드캐스트
+      setInterval(announcePresence, 3000);
+      announcePresence();
     }
-
-    function bindApp(){
-      $('#logoutBtn').addEventListener('click', ()=>{
-        if(confirm('로그아웃 하시겠습니까?')){
-          logout();
-          showAuth();
-        }
-      });
-      $('#userSearch').addEventListener('input', (e)=>{
-        state.search = e.target.value;
-        renderUsers();
-      });
-
-      $('#sendBtn').addEventListener('click', onSend);
-      $('#composerText').addEventListener('keydown', (e)=>{
-        if(e.key === 'Enter' && !e.shiftKey){
-          e.preventDefault();
-          onSend();
-        }
-      });
-
-      $('#clearChatBtn').addEventListener('click', ()=>{
-        if(!state.me || !state.peer) return;
-        if(confirm('이 대화의 메시지를 모두 비울까요?')){
-          clearConversation(state.me.id, state.peer.id);
-          renderMessages();
-        }
-      });
-
-      // 간단한 폴링(다른 탭에서 변경 감지)
-      window.addEventListener('storage', (evt)=>{
-        if(evt.key === KEY_MESSAGES){
-          // 같은 대화창이면 갱신
-          if(state.me && state.peer) renderMessages();
-        }
-        if(evt.key === KEY_USERS){
-          renderUsers();
-        }
-        if(evt.key === KEY_PINS){
-          renderUsers();
-        }
-      });
-    }
-
-    function onSend(){
-      const ta = $('#composerText');
-      const txt = ta.value;
-      if(!txt.trim()) return;
-      if(!state.me || !state.peer) return;
-
-      sendMessage(state.me.id, state.peer.id, txt);
-      ta.value = '';
-      renderMessages();
-    }
-
-    function showAuth(){
-      $('#authView').classList.remove('hide');
-      $('#appView').classList.add('hide');
-    }
-    function showApp(){
-      $('#authView').classList.add('hide');
-      $('#appView').classList.remove('hide');
-    }
-
-    function initApp(){
-      const sess = getSession();
-      if(!sess){
-        showAuth();
-        return;
+    function renderTabUsers(lastUser) {
+      const wrap = $("#tabUsers");
+      if (!wrap) return;
+      if (lastUser) {
+        // 단순히 최신 사용자만 새로고침 트리거로 사용
       }
-      state.me = { id: sess.userId, username: sess.username };
-      $('#meName').textContent = '@' + state.me.username;
-
-      showApp();
-      renderUsers();
-      renderMessages();
+      wrap.innerHTML = "";
+      // 탭 기반 존재감은 리스트 자체를 유지하기 어렵고, 여기서는 "나"만 안내하고 초대 버튼으로 시작
+      const p = el("div","small");
+      p.innerHTML = "같은 브라우저의 다른 탭은 자동 발견됩니다. 새 탭에서 다른 계정으로 로그인해보세요.";
+      wrap.appendChild(p);
     }
 
-    // ===== Boot =====
-    (function(){
-      ensureInit();
-      bindAuth();
-      bindApp();
+    // -------------------------
+    // 대화 저장/렌더
+    // -------------------------
+    function chatKey(peerId) { return peerId; }
+    function storeMessage(peerId, m) {
+      const chats = loadChats();
+      const k = chatKey(peerId);
+      chats[k] = chats[k] || [];
+      chats[k].push(m);
+      saveChats(chats);
+    }
+    function readAll(peerId) {
+      const chats = loadChats();
+      const k = chatKey(peerId);
+      (chats[k]||[]).forEach(m => { if (m.from === peerId) m.read = true; });
+      saveChats(chats);
+    }
+    function getChat(peerId) {
+      const chats = loadChats();
+      return chats[chatKey(peerId)] || [];
+    }
 
+    function renderChatList() {
+      const wrap = $("#chatList");
+      wrap.innerHTML = "";
+      const chats = loadChats();
+      const list = Object.entries(chats)
+        .map(([peerId, arr]) => {
+          const last = arr[arr.length-1];
+          const u = getUser(peerId) || { id: peerId, nick: peerId };
+          return { peerId, nick: u.nick, lastMsg: last?.body || "", lastTs: last?.ts || "", unread: state.unread[peerId]||0 };
+        })
+        .sort((a,b)=> (b.lastTs||"").localeCompare(a.lastTs||""));
+      list.forEach(item => {
+        const row = el("div","chat-item");
+        const av = el("div","avatar"); av.textContent = (item.nick || item.peerId).slice(0,2).toUpperCase();
+        const info = el("div");
+        const name = el("div"); name.textContent = item.nick || item.peerId;
+        const sub = el("div"); sub.className = "muted"; sub.textContent = item.lastMsg;
+        info.appendChild(name); info.appendChild(sub);
+        const badge = el("div","pill"); badge.textContent = item.unread ? `${item.unread} new` : "읽음";
+        row.appendChild(av); row.appendChild(info); row.appendChild(badge);
+        row.onclick = () => openChatWith(item.peerId);
+        wrap.appendChild(row);
+      });
+      if (!list.length) {
+        const empty = el("div","small muted");
+        empty.textContent = "대화가 없습니다. 목록을 만들려면 상대와 연결해보세요.";
+        wrap.appendChild(empty);
+      }
+    }
+
+    function renderMessages(peerId) {
+      const msgs = getChat(peerId);
+      const box = $("#messages");
+      box.innerHTML = "";
+      msgs.forEach(m => {
+        const bubble = el("div","bubble");
+        if (m.from === (state.me?.id)) bubble.classList.add("me");
+        bubble.textContent = m.body;
+        const meta = el("div","meta");
+        const who = m.from === state.me.id ? "나" : (getUser(m.from)?.nick || m.from);
+        const read = (m.read || m.from === state.me.id) ? "✓" : "";
+        meta.textContent = `${who} · ${new Date(m.ts).toLocaleString()} ${read}`;
+        bubble.appendChild(meta);
+        box.appendChild(bubble);
+      });
+      box.scrollTop = box.scrollHeight;
+      $("#unreadState").textContent = `${state.unread[peerId]||0} unread`;
+    }
+
+    function updateTypingState() {
+      const t = !!state.typingPeers[state.currentPeerId];
+      $("#typingState").textContent = t ? "typing..." : "idle";
+    }
+
+    function updateUnreadState() {
+      const count = state.unread[state.currentPeerId] || 0;
+      $("#unreadState").textContent = `${count} unread`;
+    }
+
+    function updatePeerHeader(peerId) {
+      const u = getUser(peerId) || { id: peerId, nick: peerId };
+      $("#peerNick").textContent = u.nick || peerId;
+      $("#peerId").textContent = u.id || peerId;
+      $("#peerAvatar").textContent = (u.nick||u.id||"?").slice(0,2).toUpperCase();
+    }
+
+    function openChatWith(peerId) {
+      state.currentPeerId = peerId;
+      updatePeerHeader(peerId);
+      readAll(peerId);
+      state.unread[peerId] = 0;
+      updateUnreadState();
+      renderChatList();
+      renderMessages(peerId);
+    }
+
+    // -------------------------
+    // 로컬(같은 브라우저) 메시지 전송
+    // -------------------------
+    function sendLocalIM(to, body) {
+      if (!bc) return;
+      bc.postMessage({ type: "im", from: state.me.id, to, body, ts: now() });
+    }
+    function sendLocalTyping(to, typing) {
+      if (!bc) return;
+      bc.postMessage({ type: "typing", from: state.me.id, to, typing });
+    }
+    function inviteTab(to) {
+      if (!bc) return;
+      bc.postMessage({ type: "invite", from: state.me.id, to });
+    }
+
+    // -------------------------
+    // WebRTC P2P
+    // -------------------------
+    function resetRTC() {
+      try { state.dc?.close(); } catch {}
+      try { state.rtc?.close(); } catch {}
+      state.dc = null; state.rtc = null; state.pendingRole = null; state.pendingDesc = null;
+      $("#connState").textContent = "disconnected";
+    }
+
+    function newPeer() {
+      const cfg = {
+        iceServers: [
+          { urls: ["stun:stun.l.google.com:19302","stun:global.stun.twilio.com:3478"] }
+        ]
+      };
+      const rtc = new RTCPeerConnection(cfg);
+      rtc.onconnectionstatechange = () => {
+        $("#connState").textContent = rtc.connectionState;
+      };
+      rtc.onicecandidate = () => {
+        // 후보는 SDP에 포함되도록 trickle = false 전략
+      };
+      rtc.ondatachannel = (ev) => {
+        setupDataChannel(ev.channel);
+      };
+      state.rtc = rtc;
+      return rtc;
+    }
+
+    function setupDataChannel(dc) {
+      state.dc = dc;
+      dc.onopen = () => {
+        $("#connState").textContent = "connected";
+        toast("P2P 연결 성공");
+      };
+      dc.onclose = () => {
+        $("#connState").textContent = "closed";
+      };
+      dc.onmessage = (ev) => {
+        try {
+          const msg = JSON.parse(ev.data);
+          if (msg.type === "im") {
+            const from = msg.from || (state.currentPeerId || "peer");
+            const peerId = msg.peerId || from;
+            storeMessage(peerId, { from: peerId, to: state.me.id, body: msg.body, ts: msg.ts, read: state.currentPeerId === peerId });
+            if (state.currentPeerId !== peerId) {
+              state.unread[peerId] = (state.unread[peerId]||0)+1;
+              renderChatList();
+              updateUnreadState();
+              toast(`P2P 새 메시지 from ${peerId}`);
+            } else {
+              renderMessages(peerId);
+            }
+          } else if (msg.type === "typing") {
+            const peerId = msg.peerId || "peer";
+            state.typingPeers[peerId] = !!msg.typing;
+            updateTypingState();
+          } else if (msg.type === "hello") {
+            // 연결 직후 상호 인사 및 프로필 교환
+            const peerId = msg.peerId || "peer";
+            if (!getUser(peerId)) {
+              // 임시 유저로 로컬에 보관(닉네임 포함)
+              const users = loadUsers();
+              users.push({ id: peerId, nick: msg.nick||peerId, passHash: "__external__", createdAt: now() });
+              saveUsers(users);
+            }
+            openChatWith(peerId);
+          }
+        } catch {
+          // 텍스트 메시지 호환
+          const peerId = state.currentPeerId || "peer";
+          storeMessage(peerId, { from: peerId, to: state.me.id, body: String(ev.data), ts: now(), read: state.currentPeerId === peerId });
+          renderMessages(peerId);
+        }
+      };
+    }
+
+    async function createOffer() {
+      resetRTC();
+      const rtc = newPeer();
+      const dc = rtc.createDataChannel("chat",{ ordered: true });
+      setupDataChannel(dc);
+      const offer = await rtc.createOffer({ offerToReceiveAudio: false, offerToReceiveVideo: false });
+      await rtc.setLocalDescription(offer);
+      const sdp = await waitIceGatheringComplete(rtc);
+      const payload = { role: "offer", sdp, from: state.me.id, nick: state.me.nick, ts: now() };
+      $("#localSignal").textContent = JSON.stringify(payload);
+      state.pendingRole = "offer";
+      toast("Offer 생성 완료. 상대에게 전달하세요.");
+    }
+
+    async function acceptOffer(remote) {
+      resetRTC();
+      const rtc = newPeer();
+      await rtc.setRemoteDescription(new RTCSessionDescription(remote.sdp));
+      const answer = await rtc.createAnswer();
+      await rtc.setLocalDescription(answer);
+      const sdp = await waitIceGatheringComplete(rtc);
+      const payload = { role: "answer", sdp, from: state.me.id, nick: state.me.nick, ts: now() };
+      $("#localSignal").textContent = JSON.stringify(payload);
+      state.pendingRole = "answer";
+      toast("Answer 생성 완료. 상대에게 전달하세요.");
+    }
+
+    async function applySignal(remoteText) {
+      const data = JSON.parse(remoteText);
+      if (!data || !data.sdp || !data.role) throw new Error("잘못된 코드입니다.");
+      if (!state.rtc) newPeer();
+      if (data.role === "offer") {
+        await acceptOffer(data);
+      } else if (data.role === "answer") {
+        await state.rtc.setRemoteDescription(new RTCSessionDescription(data.sdp));
+        toast("상대 Answer 적용됨. 연결 중...");
+        // 상대에게 내 프로필 알림
+        await sleep(300);
+        sendHello();
+      }
+      // 채팅 상대 헤더
+      if (data.from) openChatWith(data.from);
+    }
+
+    function sendHello() {
+      if (!state.dc || state.dc.readyState !== "open") return;
+      state.dc.send(JSON.stringify({ type: "hello", peerId: state.me.id, nick: state.me.nick }));
+    }
+
+    function waitIceGatheringComplete(pc) {
+      return new Promise((resolve) => {
+        if (pc.iceGatheringState === "complete") {
+          resolve(pc.localDescription);
+        } else {
+          const check = () => {
+            if (pc.iceGatheringState === "complete") {
+              pc.removeEventListener("icegatheringstatechange", check);
+              resolve(pc.localDescription);
+            }
+          };
+          pc.addEventListener("icegatheringstatechange", check);
+        }
+      });
+    }
+
+    // -------------------------
+    // 전송/입력 핸들러
+    // -------------------------
+    function sendMessage() {
+      const text = $("#msgBox").value.trim();
+      if (!text) return;
+      const peerId = state.currentPeerId;
+      if (!peerId) { toast("상대를 선택하거나 연결하세요."); return; }
+
+      // 저장 및 렌더
+      storeMessage(peerId, { from: state.me.id, to: peerId, body: text, ts: now(), read: false });
+      renderMessages(peerId);
+      renderChatList();
+
+      // 같은 브라우저 탭이면 Broadcast로
+      sendLocalIM(peerId, text);
+
+      // P2P로도 시도
+      if (state.dc && state.dc.readyState === "open") {
+        state.dc.send(JSON.stringify({ type: "im", body: text, ts: now(), from: state.me.id, peerId }));
+      }
+
+      $("#msgBox").value = "";
+    }
+
+    let typingTimer = null;
+    function handleTyping() {
+      const peerId = state.currentPeerId;
+      if (!peerId) return;
+      // 같은 탭
+      sendLocalTyping(peerId, true);
+      // P2P
+      if (state.dc && state.dc.readyState === "open") {
+        state.dc.send(JSON.stringify({ type: "typing", typing: true, peerId: peerId }));
+      }
+      clearTimeout(typingTimer);
+      typingTimer = setTimeout(() => {
+        sendLocalTyping(peerId, false);
+        if (state.dc && state.dc.readyState === "open") {
+          state.dc.send(JSON.stringify({ type: "typing", typing: false, peerId: peerId }));
+        }
+      }, 1200);
+    }
+
+    // -------------------------
+    // 초기화
+    // -------------------------
+    function restoreSession() {
       const sess = getSession();
-      if(sess){ initApp(); }
-      else{ showAuth(); }
-    })();
+      const prof = loadProfile();
+      if (sess && prof && getUser(sess.id)) {
+        state.me = { id: prof.id, nick: prof.nick };
+        $("#sessionUser").textContent = state.me.nick;
+        $("#myNick").textContent = state.me.nick;
+        $("#myId").textContent = state.me.id;
+        $("#myAvatar").textContent = state.me.nick.slice(0,2).toUpperCase();
+        showApp();
+        setupPresence();
+        renderChatList();
+      } else {
+        showAuth();
+      }
+    }
+
+    // -------------------------
+    // 이벤트 바인딩
+    // -------------------------
+    $("#goSignup").onclick = showSignup;
+    $("#goLogin").onclick = showAuth;
+
+    $("#signupBtn").onclick = async () => {
+      try {
+        await signup($("#signId").value, $("#signNick").value, $("#signPw").value);
+        showAuth();
+      } catch (e) { toast(e.message); }
+    };
+    $("#loginBtn").onclick = async () => {
+      try {
+        const me = await login($("#loginId").value, $("#loginPw").value);
+        state.me = me;
+        $("#sessionUser").textContent = me.nick;
+        $("#myNick").textContent = me.nick;
+        $("#myId").textContent = me.id;
+        $("#myAvatar").textContent = me.nick.slice(0,2).toUpperCase();
+        showApp();
+        setupPresence();
+        renderChatList();
+      } catch (e) { toast(e.message); }
+    };
+    $("#logoutBtn").onclick = logout;
+
+    // 엔터 전송
+    $("#msgBox").addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      } else {
+        handleTyping();
+      }
+    });
+    $("#sendBtn").onclick = sendMessage;
+
+    // 검색
+    $("#searchBox").addEventListener("input", (e) => {
+      const q = e.target.value.toLowerCase();
+      const wrap = $("#chatList");
+      [...wrap.children].forEach(node => {
+        const text = node.innerText?.toLowerCase() || "";
+        node.style.display = text.includes(q) ? "" : "none";
+      });
+    });
+
+    // P2P 버튼
+    $("#makeOffer").onclick = createOffer;
+    $("#acceptOffer").onclick = () => {
+      const txt = $("#remoteSignal").value.trim();
+      if (!txt) { toast("상대 Offer JSON을 붙여넣으세요."); return; }
+      try { const data = JSON.parse(txt); acceptOffer(data); } catch (e) { toast("유효한 Offer가 아닙니다."); }
+    };
+    $("#applySignal").onclick = async () => {
+      const txt = $("#remoteSignal").value.trim();
+      if (!txt) { toast("상대 JSON을 붙여넣으세요."); return; }
+      try { await applySignal(txt); } catch (e) { toast(e.message || "코드 적용 실패"); }
+    };
+
+    // 페이지 로드
+    restoreSession();
   </script>
 </body>
 </html>
-
