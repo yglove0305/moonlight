@@ -1,1 +1,811 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <title>로컬 메신저 (LocalStorage)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root{
+      --bg:#0f172a;
+      --panel:#111827;
+      --muted:#94a3b8;
+      --soft:#1f2937;
+      --accent:#22d3ee;
+      --accent-2:#60a5fa;
+      --text:#e5e7eb;
+      --danger:#ef4444;
+      --success:#10b981;
+      --warning:#f59e0b;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Apple SD Gothic Neo, Noto Sans KR, Malgun Gothic, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      background:linear-gradient(130deg, #0b1227 0%, #0d1328 40%, #0e162f 100%);
+      color:var(--text);
+    }
+
+    /* Layout */
+    .container{
+      display:flex;
+      height:100vh;
+      width:100%;
+      align-items:center;
+      justify-content:center;
+      padding:24px;
+    }
+    .card{
+      width:min(1100px, 100%);
+      height:min(760px, calc(100vh - 48px));
+      background:rgba(17,24,39,0.86);
+      border:1px solid rgba(255,255,255,0.06);
+      backdrop-filter: blur(10px);
+      border-radius:16px;
+      overflow:hidden;
+      display:flex;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+    }
+
+    /* Left panel: users */
+    .sidebar{
+      width:320px;
+      border-right:1px solid rgba(255,255,255,0.06);
+      background:linear-gradient(180deg, rgba(31,41,55,0.7), rgba(31,41,55,0.35));
+      display:flex; flex-direction:column;
+    }
+    .sidebar-header{
+      padding:16px;
+      border-bottom:1px solid rgba(255,255,255,0.06);
+    }
+    .brand{
+      font-weight:700;
+      letter-spacing:0.3px;
+      display:flex; align-items:center; gap:10px;
+    }
+    .brand-badge{
+      width:10px; height:10px; border-radius:50%;
+      background:linear-gradient(90deg,var(--accent),var(--accent-2));
+      box-shadow: 0 0 12px rgba(34,211,238,0.8);
+    }
+    .me-row{
+      padding:12px 16px;
+      border-bottom:1px dashed rgba(255,255,255,0.06);
+      font-size:14px;
+      color:var(--muted);
+      display:flex; align-items:center; justify-content:space-between;
+    }
+    .me-row .me{
+      display:flex; align-items:center; gap:8px;
+    }
+    .me-row .logout-btn{
+      color:#a1a1aa; background:transparent; border:1px solid rgba(255,255,255,0.12);
+      padding:6px 10px; border-radius:8px; cursor:pointer;
+    }
+    .me-row .logout-btn:hover{border-color:rgba(255,255,255,0.25); color:#fafafa}
+
+    .search-wrap{ padding:12px 12px 8px 12px; }
+    .input{
+      width:100%;
+      background:rgba(0,0,0,0.3);
+      border:1px solid rgba(255,255,255,0.08);
+      border-radius:10px;
+      color:var(--text);
+      padding:10px 12px;
+      outline:none;
+    }
+    .input:focus{ border-color: rgba(96,165,250,0.6); box-shadow:0 0 0 3px rgba(96,165,250,0.15); }
+
+    .user-list{
+      overflow:auto;
+      padding:8px 8px 16px;
+      display:flex; flex-direction:column; gap:8px;
+    }
+    .user-item{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:10px;
+      padding:10px;
+      border:1px solid rgba(255,255,255,0.06);
+      background:rgba(17,24,39,0.35);
+      border-radius:12px;
+      cursor:pointer;
+      transition: transform 0.08s ease, background 0.2s ease, border 0.2s ease;
+    }
+    .user-item:hover{ transform: translateY(-1px); border-color: rgba(255,255,255,0.12); }
+    .user-name{ font-weight:600 }
+    .tag{ font-size:11px; color:#a1a1aa; border:1px solid rgba(255,255,255,0.12); padding:3px 6px; border-radius:999px }
+    .pin{
+      border:none; background:transparent; color:#9ca3af; cursor:pointer;
+    }
+    .pin.active{ color:var(--accent) }
+
+    /* Right panel: chat */
+    .chat{
+      flex:1;
+      display:flex;
+      flex-direction:column;
+      background: radial-gradient(1200px 600px at 80% -100px, rgba(34,211,238,0.12), transparent 55%) no-repeat,
+                  radial-gradient(900px 500px at 0% 100%, rgba(96,165,250,0.12), transparent 60%) no-repeat;
+    }
+    .chat-header{
+      padding:14px 16px;
+      border-bottom:1px solid rgba(255,255,255,0.06);
+      display:flex; align-items:center; justify-content:space-between;
+    }
+    .chat-title{ font-weight:700 }
+    .chat-meta{ font-size:12px; color:#9ca3af }
+
+    .messages{
+      flex:1;
+      overflow:auto;
+      padding:18px 14px 10px 14px;
+      display:flex; flex-direction:column; gap:8px;
+    }
+    .empty-state{
+      margin:auto; text-align:center; color:#9aa3b1;
+    }
+    .bubble{
+      max-width:70%;
+      padding:10px 12px;
+      border-radius:12px;
+      line-height:1.45;
+      border:1px solid rgba(255,255,255,0.06);
+      background:rgba(255,255,255,0.04);
+      position:relative;
+      backdrop-filter: blur(4px);
+    }
+    .bubble.me{
+      margin-left:auto;
+      background:linear-gradient(135deg, rgba(34,211,238,0.18), rgba(96,165,250,0.18));
+      border-color:rgba(255,255,255,0.12);
+    }
+    .bubble .meta{
+      margin-top:6px;
+      font-size:11px;
+      color:#a3a3a3;
+      display:flex; justify-content:space-between; gap:12px;
+    }
+    .bubble .actions{
+      visibility:hidden;
+      display:flex; gap:6px;
+    }
+    .bubble:hover .actions{ visibility:visible; }
+    .bubble .btn-link{
+      font-size:11px; color:#cbd5e1; background:transparent; border:none; cursor:pointer;
+    }
+    .composer{
+      border-top:1px solid rgba(255,255,255,0.06);
+      padding:10px;
+      display:flex; gap:8px; align-items:flex-end;
+      background:linear-gradient(180deg, rgba(17,24,39,0.75), rgba(17,24,39,0.65));
+    }
+    .textarea{
+      flex:1; min-height:44px; max-height:120px; resize:vertical;
+      padding:10px 12px; border-radius:10px; color:var(--text);
+      background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.08); outline:none;
+    }
+    .send-btn{
+      height:44px; padding:0 16px; border-radius:10px; border:none; cursor:pointer;
+      background:linear-gradient(90deg, var(--accent), var(--accent-2));
+      color:#0b1020; font-weight:700;
+      box-shadow: 0 8px 30px rgba(34,211,238,0.25);
+    }
+    .send-btn:disabled{ opacity:0.5; cursor:not-allowed }
+
+    /* Auth view */
+    .auth{
+      width:min(480px, 100%);
+      background:rgba(17,24,39,0.86);
+      border:1px solid rgba(255,255,255,0.06);
+      border-radius:16px;
+      padding:22px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+    }
+    .tabs{ display:flex; gap:8px; margin-bottom:16px }
+    .tab{
+      flex:1; text-align:center; padding:10px 0; border-radius:10px; cursor:pointer;
+      border:1px solid rgba(255,255,255,0.08);
+      color:#cbd5e1; background:rgba(0,0,0,0.25);
+    }
+    .tab.active{
+      color:#0e1328; font-weight:700;
+      background:linear-gradient(90deg, var(--accent), var(--accent-2));
+      border-color:transparent;
+    }
+    .form-row{ display:flex; flex-direction:column; gap:8px; margin-bottom:12px }
+    .label{ font-size:12px; color:#a1a1aa }
+    .help{ font-size:12px; color:#8aa3c9 }
+    .btn{
+      width:100%; padding:12px; border:none; border-radius:10px; cursor:pointer; font-weight:700;
+      background:linear-gradient(90deg, var(--accent), var(--accent-2)); color:#0e1328;
+    }
+    .muted-btn{
+      width:100%; padding:10px; border:1px dashed rgba(255,255,255,0.15); border-radius:10px; cursor:pointer;
+      color:#cbd5e1; background:transparent; margin-top:8px;
+    }
+    .inline-msg{ font-size:13px; margin-top:6px }
+    .ok{ color:var(--success) }
+    .err{ color:var(--danger) }
+
+    /* Utility */
+    .row{ display:flex; gap:8px; align-items:center }
+    .grow{ flex:1 }
+    .hide{ display:none !important }
+
+    @media (max-width: 860px){
+      .card{ flex-direction:column; height:auto; }
+      .sidebar{ width:100%; height:320px; }
+      .chat{ height:520px }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Auth view -->
+    <div class="auth" id="authView">
+      <div class="brand" style="margin-bottom:12px">
+        <span class="brand-badge"></span>
+        <span>Local Messenger</span>
+      </div>
+      <div class="tabs">
+        <button class="tab active" id="tabLogin">로그인</button>
+        <button class="tab" id="tabSignup">회원가입</button>
+      </div>
+
+      <div id="loginForm">
+        <div class="form-row">
+          <label class="label">아이디</label>
+          <input class="input" id="loginUsername" placeholder="영문/숫자 3~16자" />
+        </div>
+        <div class="form-row">
+          <label class="label">비밀번호</label>
+          <input class="input" id="loginPassword" type="password" placeholder="최소 6자" />
+        </div>
+        <button class="btn" id="loginBtn">로그인</button>
+        <div class="inline-msg" id="loginMsg"></div>
+      </div>
+
+      <div id="signupForm" class="hide">
+        <div class="form-row">
+          <label class="label">아이디</label>
+          <input class="input" id="signupUsername" placeholder="영문/숫자 3~16자" />
+        </div>
+        <div class="form-row">
+          <label class="label">비밀번호</label>
+          <input class="input" id="signupPassword" type="password" placeholder="최소 6자" />
+        </div>
+        <div class="form-row">
+          <label class="label">비밀번호 확인</label>
+          <input class="input" id="signupPassword2" type="password" placeholder="한 번 더 입력" />
+        </div>
+        <button class="btn" id="signupBtn">회원가입</button>
+        <div class="inline-msg" id="signupMsg"></div>
+        <button class="muted-btn" id="seedBtn">샘플 유저/메시지 생성</button>
+        <div class="help">로컬 브라우저 LocalStorage에 저장됩니다.</div>
+      </div>
+    </div>
+
+    <!-- App view -->
+    <div class="card hide" id="appView">
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <div class="brand">
+            <span class="brand-badge"></span>
+            <span>Local Messenger</span>
+          </div>
+        </div>
+        <div class="me-row">
+          <div class="me">
+            <span style="width:8px;height:8px;border-radius:50%;background:linear-gradient(90deg, var(--accent), var(--accent-2));display:inline-block"></span>
+            <span id="meName">@me</span>
+          </div>
+          <button class="logout-btn" id="logoutBtn">로그아웃</button>
+        </div>
+
+        <div class="search-wrap">
+          <input id="userSearch" class="input" placeholder="유저 검색 (아이디)" />
+        </div>
+        <div class="user-list" id="userList"></div>
+      </aside>
+
+      <main class="chat">
+        <div class="chat-header">
+          <div>
+            <div class="chat-title" id="chatTitle">대화 상대를 선택하세요</div>
+            <div class="chat-meta" id="chatMeta"></div>
+          </div>
+          <div class="row">
+            <button id="clearChatBtn" class="logout-btn">대화 비우기</button>
+          </div>
+        </div>
+
+        <div class="messages" id="messages">
+          <div class="empty-state">
+            <div style="font-weight:700; margin-bottom:6px">아직 대화가 없어요</div>
+            <div style="font-size:14px">왼쪽에서 유저를 선택해 메시지를 보내보세요.</div>
+          </div>
+        </div>
+
+        <div class="composer">
+          <textarea id="composerText" class="textarea" placeholder="메시지를 입력하세요 (Enter 전송, Shift+Enter 줄바꿈)"></textarea>
+          <button class="send-btn" id="sendBtn" disabled>전송</button>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    // ===== Storage Keys =====
+    const KEY_USERS = 'lm_users';
+    const KEY_MESSAGES = 'lm_messages';
+    const KEY_SESSION = 'lm_session';
+    const KEY_PINS = 'lm_pins';
+
+    // ===== Utilities =====
+    const $ = sel => document.querySelector(sel);
+    const $$ = sel => Array.from(document.querySelectorAll(sel));
+
+    function nowTs(){ return Date.now(); }
+    function fmtTime(ts){
+      const d = new Date(ts);
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth()+1).padStart(2,'0');
+      const dd = String(d.getDate()).padStart(2,'0');
+      const hh = String(d.getHours()).padStart(2,'0');
+      const mi = String(d.getMinutes()).padStart(2,'0');
+      return `${yyyy}-${mm}-${dd} ${hh}:${mi}`;
+    }
+
+    // 간단 해시(djb2) - 데모 용도
+    function hash(str){
+      let h = 5381;
+      for(let i=0;i<str.length;i++){
+        h = ((h << 5) + h) + str.charCodeAt(i);
+        h = h & 0xffffffff;
+      }
+      return (h >>> 0).toString(16);
+    }
+
+    // Storage helpers
+    function read(key, fallback){
+      try{ const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
+      catch(e){ return fallback; }
+    }
+    function write(key, value){
+      localStorage.setItem(key, JSON.stringify(value));
+    }
+
+    // Data access
+    function getUsers(){ return read(KEY_USERS, []); }
+    function setUsers(list){ write(KEY_USERS, list); }
+    function getMessages(){ return read(KEY_MESSAGES, []); }
+    function setMessages(list){ write(KEY_MESSAGES, list); }
+    function getSession(){ return read(KEY_SESSION, null); }
+    function setSession(sess){ write(KEY_SESSION, sess); }
+    function getPins(){ return read(KEY_PINS, {}); }
+    function setPins(pins){ write(KEY_PINS, pins); }
+
+    function ensureInit(){
+      if(!localStorage.getItem(KEY_USERS)) setUsers([]);
+      if(!localStorage.getItem(KEY_MESSAGES)) setMessages([]);
+      if(!localStorage.getItem(KEY_PINS)) setPins({});
+    }
+
+    // ===== Auth Logic =====
+    function validateUsername(u){
+      return /^[a-z0-9_]{3,16}$/i.test(u);
+    }
+    function validatePassword(p){
+      return typeof p === 'string' && p.length >= 6;
+    }
+
+    function userExists(username){
+      const users = getUsers();
+      return users.some(u => u.username.toLowerCase() === username.toLowerCase());
+    }
+    function createUser(username, password){
+      const users = getUsers();
+      const id = 'u_' + hash(username + nowTs());
+      const user = {
+        id, username,
+        passwordHash: hash(password),
+        createdAt: nowTs()
+      };
+      users.push(user);
+      setUsers(users);
+      return user;
+    }
+    function findUser(username){
+      return getUsers().find(u => u.username.toLowerCase() === username.toLowerCase());
+    }
+    function login(username, password){
+      const u = findUser(username);
+      if(!u) return {ok:false, msg:'존재하지 않는 아이디입니다.'};
+      if(u.passwordHash !== hash(password)) return {ok:false, msg:'비밀번호가 올바르지 않습니다.'};
+      setSession({ userId: u.id, username: u.username, ts: nowTs() });
+      return {ok:true, user:u};
+    }
+    function logout(){
+      localStorage.removeItem(KEY_SESSION);
+    }
+
+    // ===== Messaging Logic =====
+    // 메시지는 {id, from, to, text, ts, deleted:false}
+    function convoKey(a, b){
+      return [a, b].sort().join('::');
+    }
+    function sendMessage(from, to, text){
+      const list = getMessages();
+      const msg = {
+        id: 'm_' + hash(from + to + nowTs() + Math.random()),
+        from, to, text: text.trim(),
+        ts: nowTs(),
+        deleted: false
+      };
+      list.push(msg);
+      setMessages(list);
+      return msg;
+    }
+    function deleteMessage(msgId){
+      const list = getMessages();
+      const idx = list.findIndex(m => m.id === msgId);
+      if(idx >= 0){
+        list[idx].deleted = true;
+        setMessages(list);
+      }
+    }
+    function clearConversation(a, b){
+      const list = getMessages();
+      const filtered = list.map(m => {
+        if( (m.from === a && m.to === b) || (m.from === b && m.to === a) ){
+          return { ...m, deleted:true };
+        }
+        return m;
+      });
+      setMessages(filtered);
+    }
+    function fetchConversation(a, b){
+      return getMessages()
+        .filter(m => !m.deleted && ((m.from === a && m.to === b) || (m.from === b && m.to === a)))
+        .sort((x,y)=> x.ts - y.ts);
+    }
+
+    // ===== UI State =====
+    let state = {
+      me: null,           // {id, username}
+      peer: null,         // {id, username}
+      search: ''
+    };
+
+    // ===== Rendering =====
+    function renderUsers(){
+      const box = $('#userList');
+      const pins = getPins();
+      const users = getUsers()
+        .filter(u => u.id !== state.me?.id)
+        .filter(u => u.username.toLowerCase().includes(state.search.toLowerCase()));
+
+      // pin 우선 정렬
+      users.sort((a,b)=>{
+        const aPinned = pins[a.id] ? 1 : 0;
+        const bPinned = pins[b.id] ? 1 : 0;
+        if(bPinned - aPinned !== 0) return bPinned - aPinned;
+        return a.username.localeCompare(b.username);
+      });
+
+      box.innerHTML = '';
+      if(users.length === 0){
+        const div = document.createElement('div');
+        div.className = 'empty-state';
+        div.style.padding = '24px';
+        div.innerHTML = '표시할 유저가 없습니다.';
+        box.appendChild(div);
+        return;
+      }
+
+      users.forEach(u=>{
+        const row = document.createElement('div');
+        row.className = 'user-item';
+        row.dataset.uid = u.id;
+
+        const left = document.createElement('div');
+        left.className = 'row';
+        const dot = document.createElement('span');
+        dot.style.width='8px'; dot.style.height='8px'; dot.style.borderRadius='50%';
+        dot.style.background='linear-gradient(90deg, var(--accent), var(--accent-2))';
+        const name = document.createElement('div');
+        name.className = 'user-name';
+        name.textContent = u.username;
+
+        const tag = document.createElement('span');
+        tag.className = 'tag';
+        tag.textContent = '가입 ' + new Date(u.createdAt).toLocaleDateString();
+
+        left.appendChild(dot);
+        left.appendChild(name);
+        left.appendChild(tag);
+
+        const right = document.createElement('div');
+        right.className='row';
+
+        const pinBtn = document.createElement('button');
+        pinBtn.className = 'pin' + (getPins()[u.id] ? ' active' : '');
+        pinBtn.title = '상단 고정';
+        pinBtn.innerHTML = getPins()[u.id] ? '📌' : '📍';
+        pinBtn.addEventListener('click', (e)=>{
+          e.stopPropagation();
+          const pins = getPins();
+          if(pins[u.id]) delete pins[u.id];
+          else pins[u.id] = true;
+          setPins(pins);
+          renderUsers();
+        });
+
+        const openBtn = document.createElement('button');
+        openBtn.className = 'pin';
+        openBtn.title = '대화 열기';
+        openBtn.textContent = '💬';
+        openBtn.addEventListener('click', (e)=>{
+          e.stopPropagation();
+          openChat(u);
+        });
+
+        right.appendChild(pinBtn);
+        right.appendChild(openBtn);
+
+        row.appendChild(left);
+        row.appendChild(right);
+
+        row.addEventListener('click', ()=> openChat(u));
+        box.appendChild(row);
+      });
+    }
+
+    function openChat(user){
+      state.peer = user;
+      $('#chatTitle').textContent = user.username + ' 과(와)의 대화';
+      $('#chatMeta').textContent = '메시지는 이 브라우저의 LocalStorage에만 저장됩니다.';
+      $('#sendBtn').disabled = false;
+      renderMessages();
+    }
+
+    function renderMessages(){
+      const list = $('#messages');
+      list.innerHTML = '';
+      if(!state.me || !state.peer){
+        const div = document.createElement('div');
+        div.className='empty-state';
+        div.innerHTML = '<div style="font-weight:700; margin-bottom:6px">대화 상대를 선택하세요</div>';
+        list.appendChild(div);
+        return;
+      }
+      const msgs = fetchConversation(state.me.id, state.peer.id);
+      if(msgs.length === 0){
+        const div = document.createElement('div');
+        div.className='empty-state';
+        div.innerHTML = '<div style="font-weight:700; margin-bottom:6px">대화를 시작해보세요</div><div style="font-size:14px">첫 메시지를 보내보세요.</div>';
+        list.appendChild(div);
+        return;
+      }
+      msgs.forEach(m=>{
+        const bubble = document.createElement('div');
+        bubble.className = 'bubble' + (m.from === state.me.id ? ' me' : '');
+        bubble.innerHTML = `
+          <div class="text">${escapeHtml(m.text).replace(/\n/g,'<br/>')}</div>
+          <div class="meta">
+            <span>${fmtTime(m.ts)}</span>
+            <span class="actions">
+              <button class="btn-link" data-act="copy" data-id="${m.id}">복사</button>
+              ${m.from === state.me.id ? `<button class="btn-link" data-act="del" data-id="${m.id}">삭제</button>` : ''}
+            </span>
+          </div>
+        `;
+        list.appendChild(bubble);
+      });
+      list.scrollTop = list.scrollHeight;
+
+      // action binding
+      $$('#messages .btn-link').forEach(btn=>{
+        btn.addEventListener('click', (e)=>{
+          const id = btn.getAttribute('data-id');
+          const act = btn.getAttribute('data-act');
+          if(act === 'copy'){
+            const msg = getMessages().find(m=>m.id===id);
+            if(msg && !msg.deleted){
+              navigator.clipboard?.writeText(msg.text);
+            }
+          }else if(act === 'del'){
+            if(confirm('이 메시지를 삭제하시겠습니까?')){
+              deleteMessage(id);
+              renderMessages();
+            }
+          }
+        });
+      });
+    }
+
+    function escapeHtml(s){
+      return s
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;')
+        .replace(/'/g,'&#39;');
+    }
+
+    // ===== Event Handlers =====
+    function bindAuth(){
+      const tabLogin = $('#tabLogin');
+      const tabSignup = $('#tabSignup');
+
+      tabLogin.addEventListener('click', ()=>{
+        tabLogin.classList.add('active');
+        tabSignup.classList.remove('active');
+        $('#loginForm').classList.remove('hide');
+        $('#signupForm').classList.add('hide');
+      });
+      tabSignup.addEventListener('click', ()=>{
+        tabSignup.classList.add('active');
+        tabLogin.classList.remove('active');
+        $('#signupForm').classList.remove('hide');
+        $('#loginForm').classList.add('hide');
+      });
+
+      // 로그인
+      $('#loginBtn').addEventListener('click', ()=>{
+        const u = $('#loginUsername').value.trim();
+        const p = $('#loginPassword').value;
+        const msg = $('#loginMsg');
+        msg.textContent='';
+
+        if(!validateUsername(u)){ msg.textContent='아이디 형식을 확인해주세요 (영문/숫자/언더스코어 3~16자)'; msg.className='inline-msg err'; return; }
+        if(!validatePassword(p)){ msg.textContent='비밀번호는 최소 6자입니다.'; msg.className='inline-msg err'; return; }
+
+        const res = login(u, p);
+        if(!res.ok){ msg.textContent = res.msg; msg.className='inline-msg err'; return; }
+
+        // 성공
+        msg.textContent='로그인 성공! 이동합니다.'; msg.className='inline-msg ok';
+        setTimeout(()=> initApp(), 300);
+      });
+
+      // 회원가입
+      $('#signupBtn').addEventListener('click', ()=>{
+        const u = $('#signupUsername').value.trim();
+        const p1 = $('#signupPassword').value;
+        const p2 = $('#signupPassword2').value;
+        const msg = $('#signupMsg');
+        msg.textContent='';
+
+        if(!validateUsername(u)){ msg.textContent='아이디 형식을 확인해주세요 (영문/숫자/언더스코어 3~16자)'; msg.className='inline-msg err'; return; }
+        if(userExists(u)){ msg.textContent='이미 존재하는 아이디입니다.'; msg.className='inline-msg err'; return; }
+        if(!validatePassword(p1)){ msg.textContent='비밀번호는 최소 6자입니다.'; msg.className='inline-msg err'; return; }
+        if(p1 !== p2){ msg.textContent='비밀번호 확인이 일치하지 않습니다.'; msg.className='inline-msg err'; return; }
+
+        const created = createUser(u, p1);
+        msg.textContent='회원가입 완료! 이제 로그인 해주세요.'; msg.className='inline-msg ok';
+
+        // 폼 리셋
+        $('#signupUsername').value = '';
+        $('#signupPassword').value = '';
+        $('#signupPassword2').value = '';
+
+        // 로그인 탭으로
+        $('#tabLogin').click();
+        $('#loginUsername').value = created.username;
+        $('#loginPassword').focus();
+      });
+
+      // Seed data
+      $('#seedBtn').addEventListener('click', ()=>{
+        if(!confirm('샘플 유저/메시지를 생성하시겠습니까? (기존 데이터 유지)')) return;
+
+        const names = ['alice','bob','charlie','dave','erin','frank'];
+        names.forEach(n=>{
+          if(!userExists(n)) createUser(n, 'password');
+        });
+
+        const users = getUsers();
+        const alice = users.find(u=>u.username==='alice');
+        const bob = users.find(u=>u.username==='bob');
+        if(alice && bob){
+          // 샘플 메시지 몇 개
+          sendMessage(alice.id, bob.id, '안녕하세요 Bob!\n테스트 메시지 입니다.');
+          sendMessage(bob.id, alice.id, '반가워요 Alice. 여긴 로컬 메신저예요.');
+          sendMessage(alice.id, bob.id, 'LocalStorage에만 저장돼요.');
+        }
+        alert('샘플 데이터가 추가되었습니다. 회원가입 또는 로그인 후 확인해보세요.');
+      });
+    }
+
+    function bindApp(){
+      $('#logoutBtn').addEventListener('click', ()=>{
+        if(confirm('로그아웃 하시겠습니까?')){
+          logout();
+          showAuth();
+        }
+      });
+      $('#userSearch').addEventListener('input', (e)=>{
+        state.search = e.target.value;
+        renderUsers();
+      });
+
+      $('#sendBtn').addEventListener('click', onSend);
+      $('#composerText').addEventListener('keydown', (e)=>{
+        if(e.key === 'Enter' && !e.shiftKey){
+          e.preventDefault();
+          onSend();
+        }
+      });
+
+      $('#clearChatBtn').addEventListener('click', ()=>{
+        if(!state.me || !state.peer) return;
+        if(confirm('이 대화의 메시지를 모두 비울까요?')){
+          clearConversation(state.me.id, state.peer.id);
+          renderMessages();
+        }
+      });
+
+      // 간단한 폴링(다른 탭에서 변경 감지)
+      window.addEventListener('storage', (evt)=>{
+        if(evt.key === KEY_MESSAGES){
+          // 같은 대화창이면 갱신
+          if(state.me && state.peer) renderMessages();
+        }
+        if(evt.key === KEY_USERS){
+          renderUsers();
+        }
+        if(evt.key === KEY_PINS){
+          renderUsers();
+        }
+      });
+    }
+
+    function onSend(){
+      const ta = $('#composerText');
+      const txt = ta.value;
+      if(!txt.trim()) return;
+      if(!state.me || !state.peer) return;
+
+      sendMessage(state.me.id, state.peer.id, txt);
+      ta.value = '';
+      renderMessages();
+    }
+
+    function showAuth(){
+      $('#authView').classList.remove('hide');
+      $('#appView').classList.add('hide');
+    }
+    function showApp(){
+      $('#authView').classList.add('hide');
+      $('#appView').classList.remove('hide');
+    }
+
+    function initApp(){
+      const sess = getSession();
+      if(!sess){
+        showAuth();
+        return;
+      }
+      state.me = { id: sess.userId, username: sess.username };
+      $('#meName').textContent = '@' + state.me.username;
+
+      showApp();
+      renderUsers();
+      renderMessages();
+    }
+
+    // ===== Boot =====
+    (function(){
+      ensureInit();
+      bindAuth();
+      bindApp();
+
+      const sess = getSession();
+      if(sess){ initApp(); }
+      else{ showAuth(); }
+    })();
+  </script>
+</body>
+</html>
 
